@@ -1,185 +1,104 @@
 # RedaçãoLab 📝
 
-> **"Treine, escreva e evolua com correções que realmente ajudam."**
+> **Plataforma premium de treinamento de redação para ENEM, UNESP e concursos públicos.**  
+> Um protótipo completo de EdTech com foco em prática guiada, correção detalhada, gamificação e experiência moderna.
 
-Plataforma premium de treinamento de redação para **ENEM, UNESP e Concursos Públicos**. Protótipo frontend completo com UX/UI moderna, colorida e animada.
+## 🔗 Demo online
+[Acessar demonstração](https://emilabs.cloud/demo/redacaolab/)
 
-![RedaçãoLab](https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&h=400&fit=crop)
+## 📸 Visão geral
 
-## 🚀 Como Rodar
+O **RedaçãoLab** é um protótipo frontend completo de uma plataforma educacional voltada para estudantes que desejam evoluir na escrita para exames como **ENEM, UNESP e concursos públicos**.
 
-```bash
-# Instalar dependências
-npm install
+O projeto foi pensado para simular uma aplicação real de mercado, com:
+- landing page pública
+- login
+- dashboard autenticado
+- perfis de acesso por função
+- fluxo de escrita e correção de redações
+- feedback detalhado ao aluno
+- gamificação para engajamento
 
-# Rodar em desenvolvimento
-npm run dev
+A proposta foi unir **UX/UI moderna**, **arquitetura escalável** e uma experiência consistente para diferentes perfis dentro da plataforma.
 
-# Build para produção
-npm run build
-```
+---
 
-O projeto rodará em `http://localhost:3000`
+## ✨ Principais funcionalidades
 
-## 📁 Estrutura de Pastas
+### Área pública
+- Landing page com foco em conversão
+- Seções de recursos, funcionamento, planos, CTA e FAQ
+- Interface premium com visual moderno e animado
 
-```
-src/
-├── components/
-│   ├── ui/               # Design System (Button, Card, Input, etc.)
-│   ├── layout/           # Sidebar, Topbar, AppLayout
-│   ├── gamification/     # XPChip, BadgeCard, MissionCard
-│   └── onboarding/       # OnboardingModal
-├── pages/
-│   ├── Landing/          # Landing page pública
-│   ├── Login/            # Tela de login
-│   ├── Dashboard/        # Dashboard principal
-│   ├── Lessons/          # Aulas em vídeo
-│   ├── Themes/           # Temas de redação
-│   ├── Essays/           # Redações do aluno
-│   ├── Correction/       # Correção (professor)
-│   ├── Feedback/         # Feedback da correção (aluno)
-│   ├── Classes/          # Gestão de turmas
-│   ├── Users/            # Gestão de usuários (admin)
-│   ├── Reports/          # Relatórios
-│   ├── Profile/          # Perfil do usuário
-│   ├── Settings/         # Configurações (admin)
-│   └── Help/             # Central de ajuda
-├── stores/               # Zustand stores
-├── services/             # fakeApi
-├── mocks/                # Dados mock
-├── types/                # TypeScript types
-└── lib/                  # Utilitários
-```
+### Área do aluno
+- Onboarding personalizado no primeiro acesso
+- Dashboard com progresso e recomendações
+- Escrita e envio de redações
+- Visualização de correções e feedbacks
+- Gamificação com XP, streak, badges e missões
 
-## 🗺️ Mapa de Rotas
+### Área do professor
+- Fluxo completo de correção de redações
+- Avaliação por competências
+- Comentários e destaques no texto
+- Gestão de turmas e relatórios
 
-### Rotas Públicas
-| Rota | Descrição |
-|------|-----------|
-| `/` | Landing Page |
-| `/login` | Tela de Login |
+### Área do admin
+- Gestão de usuários
+- Gestão de turmas
+- Relatórios gerais
+- Configurações da plataforma
 
-### Rotas Privadas (requer autenticação)
-| Rota | Descrição | Roles |
-|------|-----------|-------|
-| `/app` | Dashboard | Todos |
-| `/app/aulas` | Lista de aulas | Todos |
-| `/app/aulas/:id` | Detalhes da aula | Todos |
-| `/app/temas` | Catálogo de temas | Todos |
-| `/app/temas/:id` | Detalhes do tema | Todos |
-| `/app/redacoes` | Lista de redações | Todos |
-| `/app/redacoes/nova` | Nova redação | Aluno |
-| `/app/redacoes/:id` | Detalhes da redação | Todos |
-| `/app/correcao/:id` | Correção de redação | Professor |
-| `/app/feedback/:id` | Ver correção | Aluno |
-| `/app/turmas` | Gestão de turmas | Admin, Professor |
-| `/app/usuarios` | Gestão de usuários | Admin |
-| `/app/relatorios` | Relatórios | Admin, Professor |
-| `/app/perfil` | Perfil do usuário | Todos |
-| `/app/configuracoes` | Configurações | Admin |
-| `/app/ajuda` | Central de ajuda | Todos |
+---
 
-## 👥 Roles e Permissões
+## 👥 Perfis de acesso
 
 ### Admin
-- Acesso total a todas as funcionalidades
-- Gestão de usuários e turmas
-- Configurações da plataforma
-- Relatórios completos
+Acesso total às funcionalidades da plataforma, incluindo usuários, turmas, configurações e relatórios.
 
 ### Professor
-- Correção de redações
-- Gestão das próprias turmas
-- Relatórios das turmas
-- Criação de conteúdo
+Acesso à correção de redações, gestão de turmas e relatórios pedagógicos.
 
 ### Aluno
-- Escrita e envio de redações
-- Visualização de correções
-- Acesso a aulas e temas
-- Gamificação (XP, badges, streak)
+Acesso à prática de redação, aulas, temas, correções, feedbacks e elementos de gamificação.
 
-## 🎮 Modo Simulado
+---
 
-O **Role Switcher** no topo da aplicação permite alternar rapidamente entre os três perfis:
+## 🧠 Diferenciais do projeto
 
-1. Clique no badge colorido ao lado das notificações
-2. Selecione: Admin / Professor / Aluno
-3. A interface se adapta automaticamente
+- Simulação completa de uma plataforma SaaS educacional
+- Experiência pensada para múltiplos perfis de usuário
+- Fluxo de redação, correção e feedback bem estruturado
+- Interface moderna, colorida e orientada à experiência do usuário
+- Aplicação de gamificação para aumentar engajamento
+- Organização escalável de componentes e páginas
 
-### Na tela de Login
-- Selecione o role desejado antes de fazer login
-- Clique em "Entrar na demonstração" para login direto
+---
 
-## 🎓 Onboarding (Aluno)
+## 👩‍💻 Meu papel no projeto
 
-Fluxo de 3 passos no primeiro acesso:
-1. **Objetivo**: ENEM / UNESP / Concursos
-2. **Nível atual**: Iniciante / Intermediário / Avançado + Meta de nota
-3. **Rotina**: Dias da semana preferidos
+Neste projeto, fui responsável por:
+- concepção do produto
+- estruturação da experiência do usuário
+- definição da interface visual
+- arquitetura frontend
+- componentização da aplicação
+- organização de fluxos e rotas
+- simulação da experiência completa da plataforma
 
-As preferências são salvas e personalizam o dashboard.
+---
 
-## 🏆 Gamificação
-
-### Sistema de XP
-- Assistir aula: +30 XP
-- Enviar redação: +50 XP
-- Revisar correção: +20 XP
-
-### Streak
-- Contador de dias consecutivos de prática
-- Badges especiais para streaks de 7, 30 dias
-
-### Badges
-- Categorias: Streak, Redações, Competências, Especiais
-- 14 badges disponíveis para desbloquear
-
-### Missões
-- Missões diárias e semanais
-- Recompensas em XP ao completar
-
-## 🎨 Design System
-
-### Paleta de Cores
-```css
---color-primary: #6d28d9 (roxo forte)
---color-primary-2: #7c3aed (roxo)
---color-secondary: #22d3ee (ciano)
---color-accent: #fb7185 (rosa)
---color-highlight: #f59e0b (amarelo)
---color-success: #22c55e
---color-danger: #ef4444
-```
-
-### Tipografia
-- **Headings**: Plus Jakarta Sans
-- **Body**: Inter
-
-### Componentes UI
-- Button (primary, secondary, ghost, danger, gradient, outline)
-- Input, Textarea, Select
-- Card (default, glass, gradient, bordered)
-- Badge, Chip
-- Modal, ConfirmModal
-- Tabs
-- Toast/Notifier
-- Skeleton
-- ProgressBar, CircularProgress
-- EmptyState
-
-## 🛠️ Stack Técnica
+## 🛠️ Stack utilizada
 
 | Tecnologia | Uso |
 |------------|-----|
-| React 18 | UI Framework |
-| TypeScript | Tipagem |
+| React 18 | Interface da aplicação |
+| TypeScript | Tipagem estática |
 | Vite | Build tool |
 | TailwindCSS | Estilização |
-| React Router | Rotas |
+| React Router | Navegação |
 | Zustand | Estado global |
-| TanStack Query | Data fetching |
+| TanStack Query | Simulação de data fetching |
 | React Hook Form | Formulários |
 | Zod | Validação |
 | Framer Motion | Animações |
@@ -187,39 +106,41 @@ As preferências são salvas e personalizam o dashboard.
 | TipTap | Editor de texto |
 | Lucide React | Ícones |
 
-## 📝 Funcionalidades Principais
+---
 
-### Landing Page
-- Hero com gradiente roxo e mock do dashboard
-- Seções: Recursos, Como Funciona, Planos, CTA, FAQ
-- Design inspirado em EdTechs premium
+## 🎮 Destaques do produto
 
 ### Editor de Redação
-- Editor TipTap com contagem de palavras
+- Editor rico com TipTap
+- Contagem de palavras
 - Timer opcional
-- Upload de foto (drag & drop)
 - Seleção de tema e modalidade
-- Autosave (mock)
+- Upload de foto
+- Autosave simulado
 
 ### Correção (Professor)
-- Layout 2 colunas (redação + rubrica)
-- Notas por competência (0-200)
-- Comentários e highlights
-- Pontos fortes e de melhoria
+- Layout em duas colunas
+- Avaliação por competências
+- Comentários por trecho
+- Destaques de pontos fortes e melhorias
 
 ### Feedback (Aluno)
-- Nota total destacada
-- Gráfico radar de competências
-- Feedback detalhado por competência
-- Opção de refazer com base no feedback
+- Nota total em destaque
+- Gráfico radar por competências
+- Comentários detalhados
+- Incentivo à reescrita com base no feedback
 
-## 📊 Dados Mock
-
-Todos os dados são simulados via `fakeApi`:
-- Delay aleatório (300-800ms) para simular latência
-- Persist no localStorage via Zustand
-- Dados ricos para todas as entidades
+### Gamificação
+- Sistema de XP
+- Sequência de dias (streak)
+- Badges desbloqueáveis
+- Missões diárias e semanais
 
 ---
 
-Desenvolvido com 💜 para o RedaçãoLab
+## 🚀 Como rodar localmente
+
+```bash
+npm install
+npm run dev
+npm run build
