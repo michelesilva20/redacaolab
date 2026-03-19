@@ -220,15 +220,6 @@ Todos os dados são simulados via `fakeApi`:
 - Persist no localStorage via Zustand
 - Dados ricos para todas as entidades
 
-## 🔮 Próximos Passos (sugestões)
-
-- [ ] Integração com backend real
-- [ ] Sistema de notificações em tempo real
-- [ ] Chat com professor
-- [ ] Simulados cronometrados
-- [ ] PWA / App mobile
-- [ ] Dark mode
-
 ---
 
 Desenvolvido com 💜 para o RedaçãoLab
