@@ -1,3 +1,30 @@
+# RedaçãoLab
+
+An education frontend prototype for writing practice and essay-review journeys across student, teacher and administrator screens.
+
+**Status:** frontend prototype. **Stack:** React-oriented UI, TypeScript, Vite, Tailwind CSS, Tiptap and Zustand.
+
+## Scope and boundaries
+
+The service layer is a fake API backed by mocks. Role switching and grading screens are demonstrations, not server-enforced security or AI-generated assessment. The dependency manifest also needs validation: React/React DOM are not explicitly declared as direct dependencies.
+
+## Explore and run
+
+The [existing demo link](https://emilabs.cloud/demo/redacaolab/) is retained from the project documentation; hosting availability and interactive behavior must be checked separately.
+
+```sh
+npm install
+npm run dev
+```
+
+The existing `build` script performs TypeScript compilation and a Vite build. This editorial update does not establish a successful build, accessibility audit or automated test suite.
+
+## Documentação em português
+
+A apresentação original do projeto continua abaixo, com seus detalhes visuais e de navegação. As funcionalidades descritas referem-se ao protótipo.
+
+---
+
 # RedaçãoLab 📝
 
 > **Plataforma premium de treinamento de redação para ENEM, UNESP e concursos públicos.**  
@@ -144,3 +171,5 @@ Neste projeto, fui responsável por:
 npm install
 npm run dev
 npm run build
+
+```
