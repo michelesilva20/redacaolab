@@ -41,14 +41,15 @@ O manifesto de dependências também tem um ponto a validar: `react` e `react-do
 
 | Tecnologia | Papel no projeto |
 |---|---|
-| React 18 | Interface e páginas |
+| React 19 | Interface e páginas (dependência direta) |
 | TypeScript | Tipos de domínio (`User`, `Essay`, `Correction`, etc.) |
 | Vite | Dev server (porta 3000) e build |
 | Tailwind CSS 4 | Design system via tokens em `src/index.css` |
 | React Router 7 | Rotas públicas e área autenticada |
 | Zustand | Auth persistida e estado de UI |
 | TanStack Query | Fetch da fake API, cache e mutations |
-| React Hook Form + Zod | Formulário de login |
+| React Hook Form + Zod | Presentes no projeto; o login demo não usa mais formulário de credenciais |
+| Vitest + Testing Library | Testes de guard, papéis e persistência |
 | TipTap | Editor rico da redação |
 | Recharts | Radar de competências, linhas e barras |
 | Framer Motion | Animações de landing, sidebar e cards |
@@ -64,6 +65,7 @@ src/
 ├── main.tsx                Bootstrap React
 ├── index.css               Tokens de cor, tipografia e utilitários
 ├── types/index.ts          Modelo de dados do produto
+├── lib/demoAuth.ts         Sessão demo, clone de identidade e reparo
 ├── lib/utils.ts            Helpers (datas, status, categorias, cn)
 ├── stores/
 │   ├── authStore.ts        Usuário logado, papel simulado, XP
@@ -75,7 +77,8 @@ src/
 │   ├── ui/                 Design system (Button, Card, Modal...)
 │   ├── gamification/       XP, streak, badges, missões
 │   ├── onboarding/         Modal de primeiro acesso do aluno
-│   └── RoleSwitcher.tsx    Troca de papel no modo demo
+│   ├── ProtectedRoute.tsx  Guard de sessão consistente
+│   └── RoleSwitcher.tsx    Troca de perfil de demonstração
 └── pages/
     ├── Landing/            Site público
     ├── Login/
@@ -143,9 +146,11 @@ Isso é filtro de interface, não segurança. Qualquer pessoa pode abrir `/app/u
 
 ### Como entrar em cada papel
 
-Na tela de login, o seletor **Entrar como (modo demo)** escolhe o papel. O formulário valida e-mail e senha com Zod, mas o login real chama `fakeApi.auth.loginAsRole(role)` e ignora as credenciais.
+Na tela de login, o visitante escolhe um **perfil fictício** (aluno, professor ou admin) e entra na demonstração. Não há campos de e-mail/senha e não há autenticação real. `enterDemo(role)` clona o usuário mock daquele papel.
 
-Dentro do app, o **RoleSwitcher** no topo troca o papel sem novo login. O modo simulado vem ligado por padrão (`isSimulatedMode: true`).
+Dentro do app, o **RoleSwitcher** no topo troca o perfil de demonstração. Cada troca carrega um clone do mock correspondente (`user.id`, `role` e `simulatedRole` ficam alinhados). O modo simulado vem ligado por padrão (`isSimulatedMode: true`).
+
+`ProtectedRoute` só libera `/app` quando `isAuthenticated` e `user` existem juntos. Estados inconsistentes e sessões antigas misturadas no `localStorage` são reparados na hidratação.
 
 Usuários mock:
 
@@ -192,7 +197,7 @@ O aluno João Pedro inicia com `onboardingCompleted: false`, então o modal de o
 | `/app/configuracoes` | Configurações |
 | `/app/ajuda` | Ajuda e FAQ |
 
-Se não houver usuário autenticado, `ProtectedRoute` redireciona para `/login`.
+Se a sessão não for válida (`isAuthenticated && user`), `ProtectedRoute` redireciona para `/login`. Durante a hidratação do `localStorage`, a rota espera antes de decidir.
 
 ---
 
@@ -397,8 +402,8 @@ Persistido no `localStorage`.
 
 - `user`, `isAuthenticated`
 - `isSimulatedMode`, `simulatedRole`
-- `login` / `logout`
-- `setSimulatedRole` — troca o papel e reaproveita o usuário
+- `login` / `enterDemo` / `logout`
+- `setSimulatedRole` — clona o mock do papel escolhido; não reaproveita a identidade anterior
 - `updateOnboarding`, `updatePreferences`
 - `addXp` — incrementa XP e recalcula nível (`floor(xp / 200) + 1`)
 - `incrementStreak`
@@ -471,13 +476,14 @@ npm install
 npm run dev      # Vite em http://localhost:3000
 npm run build    # tsc + vite build
 npm run preview  # preview do build
+npm test         # Vitest (guard, papéis, persistência, login demo)
 ```
 
 Na tela de login:
 
 1. escolha **Aluno**, **Professor** ou **Admin**
-2. clique em **Entrar na demonstração** (ou preencha o formulário — o papel selecionado é o que vale)
-3. use o seletor de papel no topo para trocar de perfil sem sair
+2. clique em **Entrar como …**
+3. use o seletor de perfil no topo para trocar de identidade fictícia sem sair
 
 ---
 
@@ -486,7 +492,7 @@ Na tela de login:
 1. Sem backend, banco, autenticação real ou autorização de rota no servidor.
 2. Dados novos (redação, correção, turma) somem ao recarregar a página.
 3. Só o auth persistido sobrevive ao F5.
-4. Login não valida senha de verdade.
+4. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
 5. Menu esconde telas por papel; a URL continua acessível.
 6. Planos, pagamento e prazos de correção (72h / 24h) são copy de produto.
 7. Relatórios usam números estáticos.
