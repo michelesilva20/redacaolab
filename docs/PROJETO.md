@@ -67,8 +67,10 @@ src/
 ├── index.css               Tokens de cor, tipografia e utilitários
 ├── types/index.ts          Modelo de dados do produto
 ├── lib/demoAuth.ts         Sessão demo, clone de identidade e reparo
+├── lib/permissions.ts      Matriz única de permissões da demonstração
 ├── lib/sanitizeEssayHtml.ts Política restritiva de HTML de redação
 ├── lib/utils.ts            Helpers (datas, status, categorias, cn)
+├── hooks/useSafeRoleNavigation.ts  Sai de rota restrita ao trocar perfil
 ├── stores/
 │   ├── authStore.ts        Usuário logado, papel simulado, XP
 │   └── uiStore.ts          Sidebar, toasts, onboarding, confetti
@@ -80,6 +82,9 @@ src/
 │   ├── gamification/       XP, streak, badges, missões
 │   ├── onboarding/         Modal de primeiro acesso do aluno
 │   ├── ProtectedRoute.tsx  Guard de sessão consistente
+│   ├── RoleRoute.tsx       Guard de papel (403 na demo)
+│   ├── ForbiddenPage.tsx   Acesso negado da demonstração
+│   ├── IfCan.tsx           CTAs alinhados à matriz
 │   ├── SafeEssayContent.tsx HTML de redação sanitizado
 │   └── RoleSwitcher.tsx    Troca de perfil de demonstração
 └── pages/
@@ -154,6 +159,8 @@ Na tela de login, o visitante escolhe um **perfil fictício** (aluno, professor 
 Dentro do app, o **RoleSwitcher** no topo troca o perfil de demonstração. Cada troca carrega um clone do mock correspondente (`user.id`, `role` e `simulatedRole` ficam alinhados). O modo simulado vem ligado por padrão (`isSimulatedMode: true`).
 
 `ProtectedRoute` só libera `/app` quando `isAuthenticated` e `user` existem juntos. Estados inconsistentes e sessões antigas misturadas no `localStorage` são reparados na hidratação.
+
+A **matriz de permissões** em `src/lib/permissions.ts` é a fonte única da Sidebar, dos CTAs e das rotas (`RoleRoute`). Sem o papel autorizado, a URL mostra um 403 de demonstração; trocar de perfil em rota restrita volta ao dashboard. Isso é proteção de UX, não autorização de produção.
 
 Usuários mock:
 
@@ -496,7 +503,7 @@ Na tela de login:
 2. Dados novos (redação, correção, turma) somem ao recarregar a página.
 3. Só o auth persistido sobrevive ao F5.
 4. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
-5. Menu esconde telas por papel; a URL continua acessível.
+5. Menu e rotas compartilham a mesma matriz; a URL restrita mostra 403 na demo, mas o servidor ainda não valida.
 6. Planos, pagamento e prazos de correção (72h / 24h) são copy de produto.
 7. Relatórios usam números estáticos.
 8. Comentários e highlights no texto existem no tipo e nos mocks, mas a tela de correção ainda não os grava.
