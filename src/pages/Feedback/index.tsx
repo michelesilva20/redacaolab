@@ -20,6 +20,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { fakeApi } from '../../services/fakeApi';
+import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { canViewOwnEssay } from '../../lib/permissions';
+import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -31,6 +34,7 @@ import { getCategoryLabel, formatDate } from '../../lib/utils';
 export function Feedback() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.id);
 
   const { data: essay, isLoading } = useQuery({
     queryKey: ['essay', id],
@@ -43,6 +47,15 @@ export function Feedback() {
       <div className="space-y-6">
         <Skeleton height={600} className="rounded-2xl" />
       </div>
+    );
+  }
+
+  if (essay && !canViewOwnEssay(userId, essay)) {
+    return (
+      <ForbiddenPage
+        title="Feedback de outro aluno"
+        description="Nesta demonstração, o feedback pessoal só aparece para o autor da redação. O backend deverá validar a propriedade do recurso."
+      />
     );
   }
 

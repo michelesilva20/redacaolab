@@ -2,6 +2,9 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, FileText, Image, Clock, Edit } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { canViewOwnEssay } from '../../lib/permissions';
+import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -11,6 +14,7 @@ import { formatDate, getStatusLabel, getStatusColor, getCategoryLabel } from '..
 
 export function EssayDetail() {
   const { id } = useParams<{ id: string }>();
+  const userId = useAuthStore((state) => state.user?.id);
 
   const { data: essay, isLoading } = useQuery({
     queryKey: ['essay', id],
@@ -34,6 +38,15 @@ export function EssayDetail() {
           Voltar
         </Link>
       </div>
+    );
+  }
+
+  if (!canViewOwnEssay(userId, essay)) {
+    return (
+      <ForbiddenPage
+        title="Redação de outro perfil"
+        description="Nesta demonstração, o aluno só visualiza as próprias redações. O backend deverá validar a propriedade do recurso."
+      />
     );
   }
 

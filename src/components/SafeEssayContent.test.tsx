@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { mockEssays } from '../mocks/essays';
 import { fakeApi } from '../services/fakeApi';
+import { useAuthStore } from '../stores/authStore';
 import { EssayDetail } from '../pages/Essays/EssayDetail';
 import { SafeEssayContent } from './SafeEssayContent';
 
@@ -39,6 +40,7 @@ describe('EssayDetail usa conteúdo sanitizado', () => {
       content: '<p>Redação limpa</p><script>window.__essayXss=1</script><iframe src="https://evil.test"></iframe>',
     };
 
+    useAuthStore.getState().enterDemo('aluno');
     vi.spyOn(fakeApi.essays, 'getById').mockResolvedValue(poisoned);
 
     const queryClient = new QueryClient({

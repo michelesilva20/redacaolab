@@ -14,6 +14,8 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { canCorrectEssay } from '../../lib/permissions';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { Card } from '../../components/ui/Card';
@@ -113,6 +115,15 @@ export function Correction() {
           Voltar
         </Link>
       </div>
+    );
+  }
+
+  if (!canCorrectEssay(essay)) {
+    return (
+      <ForbiddenPage
+        title="Redação indisponível para correção"
+        description="Só é possível corrigir redações enviadas ou em correção. Rascunhos e textos já corrigidos ficam fora desta fila de demonstração."
+      />
     );
   }
 
