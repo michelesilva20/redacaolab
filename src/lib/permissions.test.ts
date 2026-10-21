@@ -5,6 +5,7 @@ import {
   PERMISSIONS,
   canAccessPath,
   canCorrectEssay,
+  canEditDraft,
   canViewFeedback,
   canViewOwnEssay,
   getNavItemsForRole,
@@ -21,6 +22,7 @@ describe('matriz de permissões', () => {
     ['themes', ['aluno', 'professor', 'admin']],
     ['essays', ['aluno', 'professor', 'admin']],
     ['essayCreate', ['aluno']],
+    ['essayEdit', ['aluno']],
     ['essayDetail', ['aluno']],
     ['correction', ['professor']],
     ['feedback', ['aluno']],
@@ -43,6 +45,7 @@ describe('rotas e sidebar usam a mesma matriz', () => {
     expect(getPermissionForPath('/app')).toBe('dashboard');
     expect(getPermissionForPath('/app/redacoes')).toBe('essays');
     expect(getPermissionForPath('/app/redacoes/nova')).toBe('essayCreate');
+    expect(getPermissionForPath('/app/redacoes/essay-5/editar')).toBe('essayEdit');
     expect(getPermissionForPath('/app/redacoes/essay-1')).toBe('essayDetail');
     expect(getPermissionForPath('/app/correcao/essay-2')).toBe('correction');
     expect(getPermissionForPath('/app/feedback/essay-1')).toBe('feedback');
@@ -84,6 +87,18 @@ describe('regras de recurso da demonstração', () => {
     expect(canViewFeedback('user-aluno-1', own)).toBe(true);
     expect(canViewFeedback('user-aluno-1', other)).toBe(false);
     expect(canViewFeedback('user-aluno-1', { userId: 'user-aluno-1' })).toBe(false);
+  });
+
+  it('só permite editar rascunho textual do próprio aluno', () => {
+    const draft = { userId: 'user-aluno-1', status: 'rascunho', type: 'texto' };
+
+    expect(canEditDraft('user-aluno-1', draft)).toBe(true);
+    expect(canEditDraft('user-aluno-2', draft)).toBe(false);
+    expect(canEditDraft('user-aluno-1', { ...draft, status: 'enviada' })).toBe(false);
+    expect(canEditDraft('user-aluno-1', { ...draft, type: 'imagem' })).toBe(false);
+    expect(canAccessPath('professor', '/app/redacoes/essay-5/editar')).toBe(false);
+    expect(canAccessPath('admin', '/app/redacoes/essay-5/editar')).toBe(false);
+    expect(canAccessPath('aluno', '/app/redacoes/essay-5/editar')).toBe(true);
   });
 
   it('só permite corrigir redações enviadas ou em correção', () => {

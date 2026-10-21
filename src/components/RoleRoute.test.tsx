@@ -42,6 +42,16 @@ function renderAppRoute(path: string, permission: 'users' | 'dashboard' | 'essay
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/app/redacoes/:id/editar"
+          element={
+            <ProtectedRoute>
+              <RoleRoute permission="essayEdit">
+                <div>editar-ok</div>
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </MemoryRouter>
   );
@@ -74,6 +84,28 @@ describe('RoleRoute', () => {
     renderAppRoute('/app/redacoes/nova', 'essayCreate');
     expect(await screen.findByText('Acesso não permitido')).toBeInTheDocument();
     expect(screen.queryByText('nova-ok')).not.toBeInTheDocument();
+  });
+
+  it('nega edição de rascunho a professor e admin', async () => {
+    useAuthStore.getState().enterDemo('professor');
+    render(
+      <MemoryRouter initialEntries={['/app/redacoes/essay-5/editar']}>
+        <Routes>
+          <Route
+            path="/app/redacoes/:id/editar"
+            element={
+              <ProtectedRoute>
+                <RoleRoute permission="essayEdit">
+                  <div>editar-ok</div>
+                </RoleRoute>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(await screen.findByText('Acesso não permitido')).toBeInTheDocument();
+    expect(screen.queryByText('editar-ok')).not.toBeInTheDocument();
   });
 
   it('mantém a recusa após recriar a árvore (F5 / hidratação)', async () => {
