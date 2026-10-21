@@ -12,7 +12,6 @@ import {
   Upload,
   Image,
   FileText,
-  Clock,
   X,
   AlertCircle,
 } from 'lucide-react';
@@ -29,6 +28,12 @@ import { ForbiddenPage } from '../../components/ForbiddenPage';
 import { canEditDraft } from '../../lib/permissions';
 import { invalidateEssayRelatedQueries } from '../../lib/essayQueryInvalidation';
 import { EssayDomainError } from '../../lib/essayErrors';
+import { persistEssayTimer } from '../../lib/essayRepository';
+import { snapshotFromEssay } from '../../lib/essayTimer';
+import { validateEssayImage } from '../../lib/imageUpload';
+import { useEssayTimer } from '../../hooks/useEssayTimer';
+import { EssayTimerControls } from '../../components/essays/EssayTimerControls';
+import { ConfirmModal } from '../../components/ui/Modal';
 
 const categoryOptions = [
   { value: 'enem', label: 'ENEM' },
@@ -65,9 +70,34 @@ export function NewEssay() {
   const [category, setCategory] = useState('enem');
   const [notes, setNotes] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [time, setTime] = useState(0);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [isValidatingImage, setIsValidatingImage] = useState(false);
+  const [confirmResetTimer, setConfirmResetTimer] = useState(false);
   const [essayId, setEssayId] = useState<string | undefined>(routeId);
+  const objectUrlRef = useRef<string | null>(null);
+  const validationGenRef = useRef(0);
+  const keepObjectUrlRef = useRef(false);
+  const essayIdRef = useRef<string | undefined>(routeId);
+  const userIdRef = useRef(userId);
+  essayIdRef.current = essayId;
+  userIdRef.current = userId;
+
+  const timer = useEssayTimer({
+    onCheckpoint: (snapshot) => {
+      const id = essayIdRef.current;
+      const actor = userIdRef.current;
+      if (!id || !actor) return;
+      try {
+        persistEssayTimer(actor, id, snapshot);
+      } catch {
+        addToast({
+          title: 'Cronômetro não persistido',
+          message: 'O tempo continua nesta tela, mas não foi gravado no rascunho.',
+          type: 'warning',
+        });
+      }
+    },
+  });
   const [hydrated, setHydrated] = useState(!routeId);
   const [savedSnapshot, setSavedSnapshot] = useState<EssaySnapshot | null>(null);
   const [editorRevision, setEditorRevision] = useState(0);
@@ -123,8 +153,9 @@ export function NewEssay() {
     };
     setSavedSnapshot(snapshot);
     lastSavedAt.current = existingEssay.updatedAt || existingEssay.createdAt;
+    timer.hydrate(snapshotFromEssay(existingEssay));
     setHydrated(true);
-  }, [existingEssay, editor, hydrated]);
+  }, [existingEssay, editor, hydrated, timer]);
 
   useEffect(() => {
     setEssayId(routeId);
@@ -186,6 +217,7 @@ export function NewEssay() {
         content: editor?.getHTML() ?? '',
         notes,
         wordCount,
+        timer: timer.snapshot,
       });
     },
     onSuccess: (saved) => {
@@ -233,14 +265,25 @@ export function NewEssay() {
         content: editor?.getHTML() ?? '',
         notes,
         wordCount,
+        timer: {
+          ...timer.snapshot,
+          running: false,
+          startedAt: null,
+        },
       });
     },
     onSuccess: (submitted) => {
+      if (submitted.type === 'imagem') {
+        keepObjectUrlRef.current = true;
+      }
       invalidateEssayRelatedQueries(queryClient, submitted.id);
       triggerConfetti();
       addToast({
-        title: 'Redação enviada!',
-        message: 'Você receberá a correção em breve.',
+        title: submitted.type === 'imagem' ? 'Foto enviada nesta sessão' : 'Redação enviada!',
+        message:
+          submitted.type === 'imagem'
+            ? 'A imagem fica só nesta sessão e some ao recarregar. Não é armazenamento definitivo.'
+            : 'Você receberá a correção em breve.',
         type: 'success',
       });
       navigate('/app/redacoes');
@@ -254,28 +297,67 @@ export function NewEssay() {
     },
   });
 
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const revokePreview = useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
     }
   }, []);
+
+  const applyValidImage = useCallback((file: File) => {
+    revokePreview();
+    const url = URL.createObjectURL(file);
+    objectUrlRef.current = url;
+    setImagePreview(url);
+    setImageError(null);
+  }, [revokePreview]);
+
+  const processImageFile = useCallback(async (file: File | undefined) => {
+    const generation = ++validationGenRef.current;
+    setIsValidatingImage(true);
+    setImageError(null);
+    const result = await validateEssayImage(file);
+    if (generation !== validationGenRef.current) return;
+    setIsValidatingImage(false);
+    if (!result.ok) {
+      setImageError(result.message);
+      addToast({
+        title: 'Imagem rejeitada',
+        message: result.message,
+        type: 'error',
+      });
+      return;
+    }
+    applyValidImage(result.file);
+  }, [addToast, applyValidImage]);
+
+  useEffect(() => {
+    return () => {
+      if (!keepObjectUrlRef.current) {
+        revokePreview();
+      }
+    };
+  }, [revokePreview]);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    void processImageFile(file);
+  }, [processImageFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  }, []);
+    void processImageFile(file);
+  }, [processImageFile]);
+
+  const handleRemoveImage = useCallback(() => {
+    validationGenRef.current += 1;
+    setIsValidatingImage(false);
+    setImageError(null);
+    revokePreview();
+    setImagePreview(null);
+  }, [revokePreview]);
 
   const isBusy = saveMutation.isPending || submitMutation.isPending;
 
@@ -294,9 +376,9 @@ export function NewEssay() {
   };
 
   const canSave = Boolean(selectedTheme) && activeTab === 'write' && !isBusy;
-  const canSubmit = selectedTheme && (
+  const canSubmit = selectedTheme && !isValidatingImage && (
     (activeTab === 'write' && wordCount >= 100) ||
-    (activeTab === 'photo' && imagePreview && !isEditRoute)
+    (activeTab === 'photo' && Boolean(imagePreview) && !imageError && !isEditRoute)
   );
 
   const themeOptions = themes?.map((t) => ({ value: t.id, label: t.title })) || [];
@@ -392,20 +474,13 @@ export function NewEssay() {
                 <span>{wordCount} palavras</span>
                 <span>{characterCount} caracteres</span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm ${
-                    isTimerRunning 
-                      ? 'bg-accent-100 text-accent-700' 
-                      : 'bg-neutral-100 text-neutral-600'
-                  }`}
-                >
-                  <Clock className="w-4 h-4" />
-                  {Math.floor(time / 60)}:{(time % 60).toString().padStart(2, '0')}
-                </button>
-              </div>
+              <EssayTimerControls
+                elapsedMs={timer.elapsedMs}
+                running={timer.running}
+                onStart={timer.start}
+                onPause={timer.pause}
+                onResetRequest={() => setConfirmResetTimer(true)}
+              />
             </div>
 
             <EditorContent editor={editor} className="min-h-[400px]" />
@@ -438,33 +513,49 @@ export function NewEssay() {
                     </span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png"
                       onChange={handleImageUpload}
                       className="hidden"
                     />
                   </label>
                   <p className="text-sm text-neutral-400 mt-4">
-                    PNG, JPG ou JPEG até 10MB
+                    JPEG ou PNG até 10 MiB. A validação usa o tipo e a assinatura do arquivo.
                   </p>
+                  {isValidatingImage && (
+                    <p className="text-sm text-neutral-500 mt-3" role="status">
+                      Validando imagem…
+                    </p>
+                  )}
+                  {imageError && (
+                    <p className="text-sm text-danger-600 mt-3" role="alert">
+                      {imageError}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="relative">
                   <img
                     src={imagePreview}
-                    alt="Preview"
+                    alt="Pré-visualização da redação fotografada"
                     className="w-full rounded-xl"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                    setImagePreview(null);
-                    }}
+                    onClick={handleRemoveImage}
+                    aria-label="Remover imagem"
                     className="absolute top-2 right-2 w-8 h-8 bg-danger-500 text-white rounded-full flex items-center justify-center hover:bg-danger-600 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               )}
+
+              <div className="mt-4 p-4 bg-highlight-50 rounded-xl border border-highlight-200">
+                <p className="text-sm text-highlight-800">
+                  Nesta demonstração a foto fica só nesta sessão e some ao recarregar o navegador.
+                  Não é armazenamento definitivo nem envio para um servidor.
+                </p>
+              </div>
 
               <div className="mt-4 p-4 bg-primary-50 rounded-xl">
                 <h4 className="font-medium text-primary-800 mb-2">Dicas para uma boa foto:</h4>
@@ -523,6 +614,19 @@ export function NewEssay() {
           Enviar para correção
         </Button>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmResetTimer}
+        onClose={() => setConfirmResetTimer(false)}
+        onConfirm={() => {
+          timer.reset();
+          setConfirmResetTimer(false);
+        }}
+        title="Reiniciar cronômetro?"
+        description="O tempo acumulado desta redação voltará a zero. Esta ação não apaga o texto."
+        confirmText="Reiniciar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 }
