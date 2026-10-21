@@ -22,7 +22,11 @@ export function RoleSwitcher() {
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-label="Trocar perfil de demonstração"
         className={cn(
           'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors',
           currentRole.color
@@ -44,10 +48,11 @@ export function RoleSwitcher() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-neutral-200 z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-neutral-200 z-50 overflow-hidden"
             >
               <div className="p-2 border-b border-neutral-100">
-                <p className="text-xs text-neutral-500 px-2">Modo Simulado</p>
+                <p className="text-xs font-medium text-neutral-700 px-2">Demonstração</p>
+                <p className="text-xs text-neutral-500 px-2">Usuários fictícios — sem login real</p>
               </div>
               <div className="p-2">
                 {roles.map((role) => (
