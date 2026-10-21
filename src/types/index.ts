@@ -81,6 +81,7 @@ export interface Essay {
   notes?: string;
   wordCount: number;
   createdAt: string;
+  updatedAt?: string;
   submittedAt?: string;
   correction?: Correction;
 }

@@ -3,9 +3,19 @@ import { mockUsers, getUserByRole, getStudents, getProfessors } from '../mocks/u
 import { cloneDemoUserByRole } from '../lib/demoAuth';
 import { mockLessons, getLessonById, getLessonsByCategory } from '../mocks/lessons';
 import { mockThemes, getThemeById, getThemesByCategory, getFeaturedTheme } from '../mocks/themes';
-import { mockEssays, getEssayById, getEssaysByUser, getEssaysForCorrection, getCorrectedEssays } from '../mocks/essays';
 import { getGamificationData, mockMissions } from '../mocks/gamification';
 import { mockClasses, getClassesByProfessor, getClassesByStudent, mockNotifications } from '../mocks/classes';
+import {
+  applyCorrectionInSession,
+  createSessionImageEssay,
+  getMergedEssayById,
+  listMergedCorrectedEssays,
+  listMergedEssays,
+  listMergedEssaysByUser,
+  listMergedEssaysForCorrection,
+  saveTextDraft,
+  submitTextEssay,
+} from '../lib/essayRepository';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const randomDelay = () => delay(300 + Math.random() * 500);
@@ -92,88 +102,90 @@ export const fakeApi = {
   essays: {
     getAll: async (): Promise<Essay[]> => {
       await randomDelay();
-      return mockEssays;
+      return listMergedEssays();
     },
     
     getById: async (id: string): Promise<Essay | undefined> => {
       await randomDelay();
-      const essay = getEssayById(id);
-      if (essay && essay.themeId) {
-        essay.theme = getThemeById(essay.themeId);
-      }
-      return essay;
+      return getMergedEssayById(id);
     },
     
     getByUser: async (userId: string): Promise<Essay[]> => {
       await randomDelay();
-      return getEssaysByUser(userId);
+      return listMergedEssaysByUser(userId);
     },
     
     getForCorrection: async (): Promise<Essay[]> => {
       await randomDelay();
-      const essays = getEssaysForCorrection();
-      return essays.map((e) => ({ ...e, theme: getThemeById(e.themeId) }));
+      return listMergedEssaysForCorrection();
     },
     
     getCorrected: async (): Promise<Essay[]> => {
       await randomDelay();
-      return getCorrectedEssays();
+      return listMergedCorrectedEssays();
+    },
+
+    saveDraft: async (data: {
+      actorId: string;
+      id?: string;
+      themeId: string;
+      category: Essay['category'];
+      content?: string;
+      notes?: string;
+      wordCount?: number;
+    }): Promise<Essay> => {
+      await randomDelay();
+      return saveTextDraft(data);
+    },
+
+    submit: async (data: {
+      actorId: string;
+      id?: string;
+      themeId: string;
+      category: Essay['category'];
+      content?: string;
+      notes?: string;
+      wordCount?: number;
+    }): Promise<Essay> => {
+      await randomDelay();
+      return submitTextEssay(data);
     },
     
     create: async (data: Partial<Essay>): Promise<Essay> => {
       await randomDelay();
-      const newEssay: Essay = {
-        id: `essay-${Date.now()}`,
-        userId: data.userId || 'user-aluno-1',
-        themeId: data.themeId || 'theme-1',
-        type: data.type || 'texto',
-        content: data.content,
-        imageUrl: data.imageUrl,
-        category: data.category || 'enem',
-        status: 'enviada',
-        notes: data.notes,
-        wordCount: data.content?.split(/\s+/).length || 0,
-        createdAt: new Date().toISOString(),
-        submittedAt: new Date().toISOString(),
-      };
-      mockEssays.push(newEssay);
-      return newEssay;
-    },
-    
-    saveDraft: async (data: Partial<Essay>): Promise<Essay> => {
-      await randomDelay();
-      const existing = data.id ? getEssayById(data.id) : null;
-      if (existing) {
-        Object.assign(existing, { ...data, status: 'rascunho' });
-        return existing;
+      if (data.type === 'imagem') {
+        return createSessionImageEssay({
+          actorId: data.userId || '',
+          themeId: data.themeId,
+          imageUrl: data.imageUrl,
+          category: data.category,
+          notes: data.notes,
+        });
       }
-      const newEssay: Essay = {
-        id: `essay-${Date.now()}`,
-        userId: data.userId || 'user-aluno-1',
-        themeId: data.themeId || 'theme-1',
-        type: data.type || 'texto',
-        content: data.content,
+
+      return submitTextEssay({
+        actorId: data.userId || '',
+        id: data.id,
+        themeId: data.themeId || '',
         category: data.category || 'enem',
-        status: 'rascunho',
-        wordCount: data.content?.split(/\s+/).length || 0,
-        createdAt: new Date().toISOString(),
-      };
-      mockEssays.push(newEssay);
-      return newEssay;
+        content: data.content,
+        notes: data.notes,
+        wordCount: data.wordCount,
+      });
     },
   },
   
   corrections: {
     getByEssay: async (essayId: string): Promise<Correction | undefined> => {
       await randomDelay();
-      const essay = getEssayById(essayId);
-      return essay?.correction;
+      return getMergedEssayById(essayId)?.correction;
     },
     
     submit: async (essayId: string, correction: Partial<Correction>): Promise<Correction> => {
       await randomDelay();
-      const essay = getEssayById(essayId);
-      if (!essay) throw new Error('Redação não encontrada');
+      if (!getMergedEssayById(essayId)) {
+        throw new Error('Redação não encontrada');
+      }
       
       const newCorrection: Correction = {
         id: `corr-${Date.now()}`,
@@ -190,9 +202,12 @@ export const fakeApi = {
         createdAt: new Date().toISOString(),
         finishedAt: correction.status === 'finalizada' ? new Date().toISOString() : undefined,
       };
-      
-      essay.correction = newCorrection;
-      essay.status = correction.status === 'finalizada' ? 'corrigida' : 'em_correcao';
+
+      applyCorrectionInSession(
+        essayId,
+        newCorrection,
+        correction.status === 'finalizada' ? 'corrigida' : 'em_correcao'
+      );
       
       return newCorrection;
     },
@@ -247,7 +262,7 @@ export const fakeApi = {
       await randomDelay();
       const user = getUserByRole(role);
       const gamification = getGamificationData();
-      const essays = getEssaysByUser(userId);
+      const essays = listMergedEssaysByUser(userId);
       const correctedEssays = essays.filter((e) => e.status === 'corrigida');
       
       const avgScore = correctedEssays.length > 0
