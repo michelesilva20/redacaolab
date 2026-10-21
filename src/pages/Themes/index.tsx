@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Search, Filter, Star, TrendingUp, PenTool } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { IfCan } from '../../components/IfCan';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -75,11 +76,13 @@ export function Themes() {
             Escolha um tema e comece a praticar
           </p>
         </div>
-        <Link to="/app/redacoes/nova">
-          <Button variant="gradient" rightIcon={<PenTool className="w-4 h-4" />}>
-            Escrever redação
-          </Button>
-        </Link>
+        <IfCan permission="essayCreate">
+          <Link to="/app/redacoes/nova">
+            <Button variant="gradient" rightIcon={<PenTool className="w-4 h-4" />}>
+              Escrever redação
+            </Button>
+          </Link>
+        </IfCan>
       </div>
 
       {/* Filters */}

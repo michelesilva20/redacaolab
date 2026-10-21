@@ -11,42 +11,34 @@ import {
   Settings,
   HelpCircle,
   GraduationCap,
-  CheckSquare,
   X,
 } from 'lucide-react';
+import { getNavItemsForRole, type NavItemConfig } from '../../lib/permissions';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { cn } from '../../lib/utils';
-import type { Role } from '../../types';
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  roles: Role[];
-}
-
-const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/app', icon: LayoutDashboard, roles: ['admin', 'professor', 'aluno'] },
-  { label: 'Aulas', href: '/app/aulas', icon: BookOpen, roles: ['admin', 'professor', 'aluno'] },
-  { label: 'Temas', href: '/app/temas', icon: FileText, roles: ['admin', 'professor', 'aluno'] },
-  { label: 'Redações', href: '/app/redacoes', icon: PenTool, roles: ['admin', 'professor', 'aluno'] },
-  { label: 'Turmas', href: '/app/turmas', icon: GraduationCap, roles: ['admin', 'professor'] },
-  { label: 'Usuários', href: '/app/usuarios', icon: Users, roles: ['admin'] },
-  { label: 'Relatórios', href: '/app/relatorios', icon: BarChart3, roles: ['admin', 'professor'] },
-  { label: 'Configurações', href: '/app/configuracoes', icon: Settings, roles: ['admin'] },
-  { label: 'Ajuda', href: '/app/ajuda', icon: HelpCircle, roles: ['admin', 'professor', 'aluno'] },
-];
+const navIcons: Record<NavItemConfig['href'], React.ElementType> = {
+  '/app': LayoutDashboard,
+  '/app/aulas': BookOpen,
+  '/app/temas': FileText,
+  '/app/redacoes': PenTool,
+  '/app/turmas': GraduationCap,
+  '/app/usuarios': Users,
+  '/app/relatorios': BarChart3,
+  '/app/configuracoes': Settings,
+  '/app/ajuda': HelpCircle,
+};
 
 const LG_BREAKPOINT = 1024;
 
 export function Sidebar() {
   const location = useLocation();
-  const { user, simulatedRole } = useAuthStore();
+  const { user } = useAuthStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
-  
-  const currentRole = user?.role || simulatedRole;
-  const filteredItems = navItems.filter((item) => item.roles.includes(currentRole));
+
+  const currentRole = user?.role;
+  const filteredItems = getNavItemsForRole(currentRole);
 
   /** Só fecha a sidebar ao clicar no link em mobile/tablet (drawer). Em desktop ela deve permanecer visível. */
   const handleNavClick = () => {
@@ -117,6 +109,7 @@ export function Sidebar() {
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <ul className="space-y-1">
             {filteredItems.map((item) => {
+              const Icon = navIcons[item.href] ?? LayoutDashboard;
               const isActive =
                 location.pathname === item.href ||
                 (item.href !== '/app' && location.pathname.startsWith(item.href));
@@ -133,7 +126,7 @@ export function Sidebar() {
                         : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800'
                     )}
                   >
-                    <item.icon className={cn('w-5 h-5', isActive && 'text-primary-600')} />
+                    <Icon className={cn('w-5 h-5', isActive && 'text-primary-600')} />
                     {item.label}
                     {isActive && (
                       <motion.div

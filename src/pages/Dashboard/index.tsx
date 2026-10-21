@@ -27,6 +27,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts';
+import { IfCan } from '../../components/IfCan';
 import { useAuthStore } from '../../stores/authStore';
 import { fakeApi } from '../../services/fakeApi';
 import { Card, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -71,11 +72,13 @@ export function Dashboard() {
             Continue sua jornada rumo à nota 1000
           </p>
         </div>
-        <Link to="/app/redacoes/nova">
-          <Button variant="gradient" rightIcon={<PenTool className="w-4 h-4" />}>
-            Escrever nova redação
-          </Button>
-        </Link>
+        <IfCan permission="essayCreate">
+          <Link to="/app/redacoes/nova">
+            <Button variant="gradient" rightIcon={<PenTool className="w-4 h-4" />}>
+              Escrever nova redação
+            </Button>
+          </Link>
+        </IfCan>
       </div>
 
       {/* Stats Cards */}

@@ -11,6 +11,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { IfCan } from '../../components/IfCan';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -163,20 +164,21 @@ export function ThemeDetail() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* CTA */}
-          <Card className="bg-gradient-cta text-white sticky top-24">
-            <h3 className="font-semibold mb-2">Pronto para escrever?</h3>
-            <p className="text-white/80 text-sm mb-4">
-              Comece sua redação sobre este tema agora mesmo.
-            </p>
-            <Button
-              onClick={handleStartWriting}
-              className="w-full bg-white text-primary-600 hover:bg-neutral-100"
-              rightIcon={<PenTool className="w-4 h-4" />}
-            >
-              Escrever agora
-            </Button>
-          </Card>
+          <IfCan permission="essayCreate">
+            <Card className="bg-gradient-cta text-white sticky top-24">
+              <h3 className="font-semibold mb-2">Pronto para escrever?</h3>
+              <p className="text-white/80 text-sm mb-4">
+                Comece sua redação sobre este tema agora mesmo.
+              </p>
+              <Button
+                onClick={handleStartWriting}
+                className="w-full bg-white text-primary-600 hover:bg-neutral-100"
+                rightIcon={<PenTool className="w-4 h-4" />}
+              >
+                Escrever agora
+              </Button>
+            </Card>
+          </IfCan>
 
           {/* Tips */}
           <Card>

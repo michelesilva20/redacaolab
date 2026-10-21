@@ -12,6 +12,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { IfCan } from '../../components/IfCan';
 import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -167,18 +168,19 @@ export function LessonDetail() {
             </div>
           </Card>
 
-          {/* Action */}
-          <Card className="bg-gradient-hero text-white">
-            <h3 className="font-semibold mb-2">Pronto para praticar?</h3>
-            <p className="text-white/80 text-sm mb-4">
-              Após assistir, aplique o que aprendeu escrevendo uma redação.
-            </p>
-            <Link to="/app/redacoes/nova">
-              <Button className="w-full bg-white text-primary-600 hover:bg-neutral-100">
-                Escrever redação
-              </Button>
-            </Link>
-          </Card>
+          <IfCan permission="essayCreate">
+            <Card className="bg-gradient-hero text-white">
+              <h3 className="font-semibold mb-2">Pronto para praticar?</h3>
+              <p className="text-white/80 text-sm mb-4">
+                Após assistir, aplique o que aprendeu escrevendo uma redação.
+              </p>
+              <Link to="/app/redacoes/nova">
+                <Button className="w-full bg-white text-primary-600 hover:bg-neutral-100">
+                  Escrever redação
+                </Button>
+              </Link>
+            </Card>
+          </IfCan>
         </div>
       </div>
     </div>
