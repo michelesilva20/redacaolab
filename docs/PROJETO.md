@@ -49,7 +49,8 @@ O manifesto de dependências também tem um ponto a validar: `react` e `react-do
 | Zustand | Auth persistida e estado de UI |
 | TanStack Query | Fetch da fake API, cache e mutations |
 | React Hook Form + Zod | Presentes no projeto; o login demo não usa mais formulário de credenciais |
-| Vitest + Testing Library | Testes de guard, papéis e persistência |
+| Vitest + Testing Library | Testes de guard, papéis, persistência e sanitização |
+| DOMPurify | Sanitização do HTML de redação antes de renderizar |
 | TipTap | Editor rico da redação |
 | Recharts | Radar de competências, linhas e barras |
 | Framer Motion | Animações de landing, sidebar e cards |
@@ -66,6 +67,7 @@ src/
 ├── index.css               Tokens de cor, tipografia e utilitários
 ├── types/index.ts          Modelo de dados do produto
 ├── lib/demoAuth.ts         Sessão demo, clone de identidade e reparo
+├── lib/sanitizeEssayHtml.ts Política restritiva de HTML de redação
 ├── lib/utils.ts            Helpers (datas, status, categorias, cn)
 ├── stores/
 │   ├── authStore.ts        Usuário logado, papel simulado, XP
@@ -78,6 +80,7 @@ src/
 │   ├── gamification/       XP, streak, badges, missões
 │   ├── onboarding/         Modal de primeiro acesso do aluno
 │   ├── ProtectedRoute.tsx  Guard de sessão consistente
+│   ├── SafeEssayContent.tsx HTML de redação sanitizado
 │   └── RoleSwitcher.tsx    Troca de perfil de demonstração
 └── pages/
     ├── Landing/            Site público
@@ -326,7 +329,7 @@ Layout em duas colunas. O professor atribui 0–200 em cada competência:
 | C4 | Coesão textual | 200 |
 | C5 | Proposta de intervenção | 200 |
 
-A nota total é a soma (máximo 1000). Também há feedback geral, pontos fortes e melhorias. Comentários e highlights existem no modelo de dados e nos mocks, mas a tela de correção ainda envia arrays vazios nesses campos.
+A nota total é a soma (máximo 1000). Também há feedback geral, pontos fortes e melhorias. Comentários e highlights existem no modelo de dados e nos mocks, mas a tela de correção ainda envia arrays vazios nesses campos. O HTML da redação passa por `sanitizeEssayHtml` (DOMPurify) antes de `SafeEssayContent` renderizar.
 
 ### Feedback
 
@@ -498,7 +501,7 @@ Na tela de login:
 7. Relatórios usam números estáticos.
 8. Comentários e highlights no texto existem no tipo e nos mocks, mas a tela de correção ainda não os grava.
 9. Vídeos de aula e PDFs são placeholders.
-10. `react` / `react-dom` precisam ser confirmados como dependências diretas.
+10. A sanitização de HTML no cliente não substitui validação no backend futuro.
 
 ---
 
@@ -509,6 +512,7 @@ Na tela de login:
 3. `src/services/fakeApi.ts` — o que cada tela “busca”
 4. `src/stores/authStore.ts` — quem está logado e qual papel está ativo
 5. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
-6. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
+6. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
+7. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
 
 Com esses seis arquivos dá para entender o projeto inteiro e encaixar um backend depois, trocando a `fakeApi` por chamadas reais sem redesenhar as telas.
