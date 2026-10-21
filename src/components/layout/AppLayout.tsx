@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ToastContainer } from '../ui/Toast';
 import { OnboardingModal } from '../onboarding/OnboardingModal';
+import { useSafeRoleNavigation } from '../../hooks/useSafeRoleNavigation';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { cn } from '../../lib/utils';
@@ -10,6 +11,7 @@ import { cn } from '../../lib/utils';
 export function AppLayout() {
   const { user } = useAuthStore();
   const { sidebarOpen } = useUIStore();
+  useSafeRoleNavigation();
   
   const showOnboarding = user?.role === 'aluno' && !user?.onboardingCompleted;
 
