@@ -123,12 +123,20 @@ Landing / Login / App autenticado
            fakeApi (delay 300–800 ms)
                  │
                  ▼
-           mocks em memória
+     essayRepository (merge mocks + localStorage)
+                 │
+                 ▼
+           mocks em memória + overlay `redacaolab-essays-v1`
 ```
 
 Não existe servidor. A `fakeApi` imita uma API REST: recebe parâmetros, espera alguns milissegundos e devolve objetos tipados. O TanStack Query trata isso como se fosse um backend (loading, cache, mutations).
 
-O estado que precisa sobreviver ao F5 fica no `authStore` (Zustand + `persist` no `localStorage`, chave `redacaolab-auth`). O restante — redações novas, turmas criadas, aulas concluídas — vive só na memória da sessão.
+O estado que precisa sobreviver ao F5:
+
+- `authStore` (Zustand + `persist`, chave `redacaolab-auth`)
+- redações **textuais** do aluno (rascunho e enviada) no overlay `redacaolab-essays-v1`
+
+Turmas criadas, aulas concluídas, fotos de redação e correções do professor ainda vivem só na memória da sessão. O `localStorage` de redações é demonstrativo e **não** substitui banco nem autorização de produção.
 
 ---
 
@@ -248,13 +256,15 @@ Login como aluno
     → Onboarding (se for o primeiro acesso)
     → Dashboard (progresso, missão, tema em destaque, aula recomendada)
     → Temas (filtro por banca e dificuldade)
-    → Nova redação (TipTap ou foto, mínimo 100 palavras)
+    → Nova redação (TipTap ou foto, mínimo 100 palavras para envio)
+    → Salvar rascunho (explícito; sem autosave) → `/app/redacoes/:id/editar`
     → Lista de redações (rascunho / enviada / em correção / corrigida)
+    → Retomar rascunho ou ver detalhe; envio atualiza o mesmo ID
     → Feedback (nota, radar C1–C5, comentários)
     → Aulas, perfil, gamificação
 ```
 
-A lista de redações do aluno vem de `fakeApi.essays.getByUser(userId)`. Se a redação já estiver `corrigida`, o clique abre `/app/feedback/:id`. Caso contrário, abre o detalhe.
+A lista de redações do aluno vem de `fakeApi.essays.getByUser(userId)`, que mescla mocks com o overlay local e anexa o `theme`. Rascunho textual do dono abre `/app/redacoes/:id/editar`. Se estiver `corrigida`, o clique abre `/app/feedback/:id`. Caso contrário, abre o detalhe.
 
 ### 9.3 Jornada do professor
 
@@ -385,7 +395,7 @@ Os tipos em `src/types/index.ts` são o contrato do produto.
 | `users` | listar, buscar, alunos, professores |
 | `lessons` | listar, detalhe, marcar como concluída |
 | `themes` | listar, detalhe, tema em destaque |
-| `essays` | listar, por usuário, fila de correção, criar, rascunho |
+| `essays` | listar, por usuário, fila de correção, `saveDraft`, `submit`, criar (foto só na sessão) |
 | `corrections` | buscar por redação, enviar/salvar |
 | `classes` | listar, por professor/aluno, criar |
 | `notifications` | listar, marcar como lida |
@@ -500,8 +510,8 @@ Na tela de login:
 ## 18. Limites do protótipo (importante para evolução)
 
 1. Sem backend, banco, autenticação real ou autorização de rota no servidor.
-2. Dados novos (redação, correção, turma) somem ao recarregar a página.
-3. Só o auth persistido sobrevive ao F5.
+2. Rascunhos e envios **textuais** do aluno sobrevivem ao F5 no `localStorage` (demonstração). Correção do professor, foto de redação, turma nova e aula concluída ainda somem ao recarregar.
+3. O `localStorage` de redações não é armazenamento seguro nem autorização: qualquer perfil demo no mesmo navegador pode lê-lo.
 4. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
 5. Menu e rotas compartilham a mesma matriz; a URL restrita mostra 403 na demo, mas o servidor ainda não valida.
 6. Planos, pagamento e prazos de correção (72h / 24h) são copy de produto.
@@ -517,9 +527,10 @@ Na tela de login:
 1. `src/types/index.ts` — o vocabulário do produto
 2. `src/App.tsx` — o mapa de telas
 3. `src/services/fakeApi.ts` — o que cada tela “busca”
-4. `src/stores/authStore.ts` — quem está logado e qual papel está ativo
-5. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
-6. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
-7. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
+4. `src/lib/essayRepository.ts` e `essayPersistence.ts` — overlay local das redações textuais
+5. `src/stores/authStore.ts` — quem está logado e qual papel está ativo
+6. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
+7. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
+8. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
 
-Com esses seis arquivos dá para entender o projeto inteiro e encaixar um backend depois, trocando a `fakeApi` por chamadas reais sem redesenhar as telas.
+Com esses arquivos dá para entender o projeto inteiro e encaixar um backend depois, trocando a `fakeApi` / `essayRepository` por chamadas reais sem redesenhar as telas.
