@@ -31,7 +31,7 @@ Tudo isso roda no navegador. Login, dados, correções e gamificação são simu
 | Frontend React com fluxos reais de tela | Backend, banco ou autenticação de verdade |
 | Troca de perfil (aluno / professor / admin) para demo | Controle de acesso no servidor |
 | Correção por competências na interface | Correção automática por IA |
-| Fake API com delay e TanStack Query | Persistência entre recarregamentos além do localStorage de auth |
+| Fake API com delay e TanStack Query | Persistência de produção; foto de redação ainda some ao recarregar |
 
 O manifesto de dependências também tem um ponto a validar: `react` e `react-dom` não estão declarados como dependências diretas no `package.json`, embora a aplicação os use.
 
@@ -67,13 +67,17 @@ src/
 ├── index.css               Tokens de cor, tipografia e utilitários
 ├── types/index.ts          Modelo de dados do produto
 ├── lib/demoAuth.ts         Sessão demo, clone de identidade e reparo
+├── lib/demoOnboarding.ts   Conclusão de onboarding por identidade demo
 ├── lib/permissions.ts      Matriz única de permissões da demonstração
 ├── lib/sanitizeEssayHtml.ts Política restritiva de HTML de redação
+├── lib/essayTimer.ts       Snapshot e reconstrução do cronômetro
+├── lib/imageUpload.ts      Validação JPEG/PNG (MIME + assinatura)
 ├── lib/utils.ts            Helpers (datas, status, categorias, cn)
+├── hooks/useEssayTimer.ts  Cronômetro por timestamps (UI a cada 250 ms)
 ├── hooks/useSafeRoleNavigation.ts  Sai de rota restrita ao trocar perfil
 ├── stores/
 │   ├── authStore.ts        Usuário logado, papel simulado, XP
-│   └── uiStore.ts          Sidebar, toasts, onboarding, confetti
+│   └── uiStore.ts          Sidebar, toasts, confetti
 ├── services/fakeApi.ts     Camada de dados (mocks + delay)
 ├── mocks/                  Usuários, aulas, temas, redações, turmas, XP
 ├── components/
@@ -81,6 +85,7 @@ src/
 │   ├── ui/                 Design system (Button, Card, Modal...)
 │   ├── gamification/       XP, streak, badges, missões
 │   ├── onboarding/         Modal de primeiro acesso do aluno
+│   ├── essays/             Controles do cronômetro
 │   ├── ProtectedRoute.tsx  Guard de sessão consistente
 │   ├── RoleRoute.tsx       Guard de papel (403 na demo)
 │   ├── ForbiddenPage.tsx   Acesso negado da demonstração
@@ -134,7 +139,8 @@ Não existe servidor. A `fakeApi` imita uma API REST: recebe parâmetros, espera
 O estado que precisa sobreviver ao F5:
 
 - `authStore` (Zustand + `persist`, chave `redacaolab-auth`)
-- redações **textuais** do aluno (rascunho e enviada) no overlay `redacaolab-essays-v1`
+- conclusão do onboarding do aluno demo (`redacaolab-onboarding-v1`, por `userId`)
+- redações **textuais** do aluno (rascunho e enviada) no overlay `redacaolab-essays-v1`, inclusive metadados do cronômetro
 
 Turmas criadas, aulas concluídas, fotos de redação e correções do professor ainda vivem só na memória da sessão. O `localStorage` de redações é demonstrativo e **não** substitui banco nem autorização de produção.
 
@@ -181,7 +187,7 @@ Usuários mock:
 | Aluno | Ana Clara | ana@email.com |
 | Aluno | Lucas Mendes | lucas@email.com |
 
-O aluno João Pedro inicia com `onboardingCompleted: false`, então o modal de onboarding aparece no primeiro acesso.
+O mock do aluno João Pedro nasce com `onboardingCompleted: false`. Depois da primeira conclusão, o store `redacaolab-onboarding-v1` reaplica a flag no clone da identidade, para o modal não reabrir no RoleSwitcher, no `enterDemo('aluno')` nem no F5.
 
 ---
 
@@ -247,7 +253,7 @@ Quando o usuário é aluno e ainda não completou o onboarding, o `AppLayout` ab
 2. nível atual (400 / 600 / 800) e nota-alvo
 3. dias da semana em que pretende praticar
 
-Ao concluir, as preferências vão para o `authStore`, o onboarding é marcado como feito e um confetti aparece.
+Ao concluir, as preferências vão para o `authStore`, o onboarding é marcado como feito no usuário da sessão **e** no store `redacaolab-onboarding-v1` (sem mutar o mock). Um confetti é disparado no `uiStore`.
 
 ### 9.2 Jornada do aluno
 
@@ -330,9 +336,11 @@ Editor TipTap (StarterKit + placeholder + contagem de caracteres, limite 3000) o
 - tema
 - banca
 - anotações
-- timer opcional
+- cronômetro real (`useEssayTimer`): inicia, pausa, retoma e reinicia com confirmação. A verdade do tempo é `elapsedMs` + `startedAt`; o intervalo só atualiza a UI. Em rascunhos salvos o tempo volta no F5. Não bloqueia a escrita.
 
-Envio exige tema + (pelo menos 100 palavras **ou** imagem). Sucesso dispara confetti e toast.
+A foto aceita só JPEG/PNG até 10 MiB, com checagem de MIME e assinatura binária. O preview usa `blob:` e é revogado ao remover. **Não** gravamos a imagem no overlay textual. A interface avisa que a foto some ao recarregar.
+
+Envio exige tema + (pelo menos 100 palavras **ou** imagem válida já aceita). Sucesso dispara confetti e toast.
 
 ### Correção
 
@@ -373,7 +381,7 @@ Os tipos em `src/types/index.ts` são o contrato do produto.
 
 **Theme** — título, eixo, dificuldade, repertório, checklist, exemplos e destaque.
 
-**Essay** — aluno, tema, tipo (`texto` ou `imagem`), conteúdo ou URL da imagem, banca, status, contagem de palavras e correção opcional.
+**Essay** — aluno, tema, tipo (`texto` ou `imagem`), conteúdo ou URL da imagem (só sessão), banca, status, contagem de palavras, metadados opcionais do cronômetro (`timerElapsedMs`, `timerRunning`, `timerStartedAt`) e correção opcional.
 
 **Correction** — professor, competências, nota total, feedback geral, pontos fortes, melhorias, comentários, highlights e status (`rascunho` ou `finalizada`).
 
@@ -423,8 +431,9 @@ Persistido no `localStorage`.
 - `user`, `isAuthenticated`
 - `isSimulatedMode`, `simulatedRole`
 - `login` / `enterDemo` / `logout`
-- `setSimulatedRole` — clona o mock do papel escolhido; não reaproveita a identidade anterior
-- `updateOnboarding`, `updatePreferences`
+- `setSimulatedRole` — clona o mock do papel escolhido e reaplica a conclusão de onboarding do store versionado
+- `updateOnboarding` — atualiza a sessão e grava `userId` em `redacaolab-onboarding-v1`
+- `updatePreferences`
 - `addXp` — incrementa XP e recalcula nível (`floor(xp / 200) + 1`)
 - `incrementStreak`
 
@@ -510,15 +519,16 @@ Na tela de login:
 ## 18. Limites do protótipo (importante para evolução)
 
 1. Sem backend, banco, autenticação real ou autorização de rota no servidor.
-2. Rascunhos e envios **textuais** do aluno sobrevivem ao F5 no `localStorage` (demonstração). Correção do professor, foto de redação, turma nova e aula concluída ainda somem ao recarregar.
-3. O `localStorage` de redações não é armazenamento seguro nem autorização: qualquer perfil demo no mesmo navegador pode lê-lo.
-4. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
-5. Menu e rotas compartilham a mesma matriz; a URL restrita mostra 403 na demo, mas o servidor ainda não valida.
-6. Planos, pagamento e prazos de correção (72h / 24h) são copy de produto.
-7. Relatórios usam números estáticos.
-8. Comentários e highlights no texto existem no tipo e nos mocks, mas a tela de correção ainda não os grava.
-9. Vídeos de aula e PDFs são placeholders.
-10. A sanitização de HTML no cliente não substitui validação no backend futuro.
+2. Rascunhos e envios **textuais** do aluno (incluindo o cronômetro) sobrevivem ao F5 no `localStorage` (demonstração). Correção do professor, foto de redação, turma nova e aula concluída ainda somem ao recarregar.
+3. A conclusão do onboarding do aluno demo sobrevive ao F5 e à troca de perfil (`redacaolab-onboarding-v1`).
+4. O `localStorage` de redações não é armazenamento seguro nem autorização: qualquer perfil demo no mesmo navegador pode lê-lo.
+5. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
+6. Menu e rotas compartilham a mesma matriz; a URL restrita mostra 403 na demo, mas o servidor ainda não valida.
+7. Planos, pagamento e prazos de correção (72h / 24h) são copy de produto.
+8. Relatórios usam números estáticos.
+9. Comentários e highlights no texto existem no tipo e nos mocks, mas a tela de correção ainda não os grava.
+10. Vídeos de aula e PDFs são placeholders.
+11. A sanitização de HTML no cliente não substitui validação no backend futuro.
 
 ---
 
@@ -528,9 +538,10 @@ Na tela de login:
 2. `src/App.tsx` — o mapa de telas
 3. `src/services/fakeApi.ts` — o que cada tela “busca”
 4. `src/lib/essayRepository.ts` e `essayPersistence.ts` — overlay local das redações textuais
-5. `src/stores/authStore.ts` — quem está logado e qual papel está ativo
-6. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
-7. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
-8. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
+5. `src/hooks/useEssayTimer.ts` e `src/lib/imageUpload.ts` — cronômetro e validação de foto
+6. `src/stores/authStore.ts` e `src/lib/demoOnboarding.ts` — sessão demo e onboarding
+7. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
+8. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
+9. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
 
 Com esses arquivos dá para entender o projeto inteiro e encaixar um backend depois, trocando a `fakeApi` / `essayRepository` por chamadas reais sem redesenhar as telas.
