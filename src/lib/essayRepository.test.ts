@@ -7,6 +7,7 @@ import {
   listMergedEssays,
   listMergedEssaysByUser,
   listMergedEssaysForCorrection,
+  persistEssayTimer,
   resetEssayRepositoryForTests,
   saveTextDraft,
   submitTextEssay,
@@ -267,5 +268,45 @@ describe('essayRepository — rascunho e envio', () => {
         wordCount: 110,
       })
     ).toThrowError(/outro perfil/);
+  });
+
+  it('persiste o cronômetro no rascunho e mantém o tempo após o envio', () => {
+    const draft = saveTextDraft({
+      actorId: aluno1,
+      themeId: 'theme-1',
+      category: 'enem',
+      content: `<p>${words(110)}</p>`,
+      wordCount: 110,
+      timer: { elapsedMs: 15000, running: true, startedAt: '2026-10-21T12:00:00.000Z' },
+    });
+
+    const paused = persistEssayTimer(aluno1, draft.id, {
+      elapsedMs: 18000,
+      running: false,
+      startedAt: null,
+    });
+    expect(paused.timerElapsedMs).toBe(18000);
+    expect(paused.timerRunning).toBe(false);
+
+    const persisted = localStorage.getItem(ESSAY_STORE_KEY);
+    resetEssayRepositoryForTests();
+    localStorage.setItem(ESSAY_STORE_KEY, persisted || '');
+
+    const recovered = getMergedEssayById(draft.id);
+    expect(recovered?.timerElapsedMs).toBe(18000);
+    expect(recovered?.content).toContain('palavra1');
+
+    const submitted = submitTextEssay({
+      actorId: aluno1,
+      id: draft.id,
+      themeId: 'theme-1',
+      category: 'enem',
+      content: `<p>${words(110)}</p>`,
+      wordCount: 110,
+      timer: { elapsedMs: 18000, running: false, startedAt: null },
+    });
+    expect(submitted.id).toBe(draft.id);
+    expect(submitted.timerElapsedMs).toBe(18000);
+    expect(JSON.stringify(readEssayStore().essays)).not.toContain('data:image');
   });
 });
