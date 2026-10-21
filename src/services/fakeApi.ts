@@ -1,5 +1,6 @@
 import type { User, Role, Lesson, Theme, Essay, Correction, DashboardData, Class, Notification, GamificationData } from '../types';
 import { mockUsers, getUserByRole, getStudents, getProfessors } from '../mocks/users';
+import { cloneDemoUserByRole } from '../lib/demoAuth';
 import { mockLessons, getLessonById, getLessonsByCategory } from '../mocks/lessons';
 import { mockThemes, getThemeById, getThemesByCategory, getFeaturedTheme } from '../mocks/themes';
 import { mockEssays, getEssayById, getEssaysByUser, getEssaysForCorrection, getCorrectedEssays } from '../mocks/essays';
@@ -14,18 +15,18 @@ export const fakeApi = {
     login: async (email: string, _password: string, role?: Role): Promise<User> => {
       await randomDelay();
       if (role) {
-        return getUserByRole(role);
+        return cloneDemoUserByRole(role);
       }
       const user = mockUsers.find((u) => u.email === email);
       if (!user) {
         throw new Error('Usuário não encontrado');
       }
-      return user;
+      return structuredClone(user);
     },
     
     loginAsRole: async (role: Role): Promise<User> => {
       await randomDelay();
-      return getUserByRole(role);
+      return cloneDemoUserByRole(role);
     },
   },
   
