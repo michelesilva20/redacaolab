@@ -18,6 +18,7 @@
 | Documentação de produto | `docs/PROJETO.md` (mapa de telas e arquitetura do protótipo) |
 | Branch desta entrega | `chore/project-foundation` (local, sem push) |
 | Base | `main` em `6bfb9df` — *Merge pull request #1 from michelesilva20/docs/engineering-portfolio-2026-10* |
+| Commits desta entrega | `b696691` `362677f` `2105063` `0f24488` (+ este registro de SHA) |
 | Demo pública | `https://emilabs.cloud/demo/redacaolab/` — disponibilidade **não validada nesta execução** |
 
 ## 2. Escopo do produto e MVP
@@ -191,7 +192,7 @@ Não há scripts `test`, `lint` ou `typecheck` separados. O `build` já executa 
 
 | Data | Entrega | Branch | Commit(s) | Validação real | Riscos / pendências |
 |---|---|---|---|---|---|
-| 2026-10-21 | Fase 0 — governança, auditoria e baseline de build | `chore/project-foundation` | ver commits desta branch (locais) | `npm install` e `npm run build` exit 0; leitura do código e do Git | Sem push; React ainda indireto; P0 de auth/HTML/audit abertos |
+| 2026-10-21 | Fase 0 — governança, auditoria e baseline de build | `chore/project-foundation` | `b696691` regras; `362677f` gitignore; `2105063` mapa do produto; `0f24488` baseline | `npm install` e `npm run build` exit 0; leitura do código e do Git | Sem push; React ainda indireto; P0 de auth/HTML/audit abertos |
 | 2026-10-21 | Baseline documental pré-auditoria (rascunho) | ainda não aplicado | nenhum | só leitura | substituído por esta revisão |
 
 > Entregas mais recentes no topo. SHA reais ficam no histórico Git desta branch. Não inventar hash.
