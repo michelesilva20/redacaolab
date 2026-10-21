@@ -25,6 +25,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { SafeEssayContent } from '../../components/SafeEssayContent';
 import { getCategoryLabel, formatDate } from '../../lib/utils';
 
 export function Feedback() {
@@ -211,9 +212,9 @@ export function Feedback() {
               Sua redação
             </h3>
             {essay.type === 'texto' ? (
-              <div 
+              <SafeEssayContent
+                html={essay.content}
                 className="prose prose-sm max-w-none p-4 bg-neutral-50 rounded-xl"
-                dangerouslySetInnerHTML={{ __html: essay.content || '' }}
               />
             ) : (
               <img

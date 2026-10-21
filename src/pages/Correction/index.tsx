@@ -21,6 +21,7 @@ import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { SafeEssayContent } from '../../components/SafeEssayContent';
 import { getCategoryLabel } from '../../lib/utils';
 import type { Competency } from '../../types';
 
@@ -178,9 +179,9 @@ export function Correction() {
 
             <div className="max-h-[600px] overflow-auto rounded-xl border border-neutral-200">
               {essay.type === 'texto' ? (
-                <div 
+                <SafeEssayContent
+                  html={essay.content}
                   className="prose prose-sm max-w-none p-4"
-                  dangerouslySetInnerHTML={{ __html: essay.content || '' }}
                 />
               ) : (
                 <img

@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { SafeEssayContent } from '../../components/SafeEssayContent';
 import { formatDate, getStatusLabel, getStatusColor, getCategoryLabel } from '../../lib/utils';
 
 export function EssayDetail() {
@@ -83,9 +84,9 @@ export function EssayDetail() {
       <Card>
         <h3 className="font-semibold text-neutral-800 mb-4">Redação</h3>
         {essay.type === 'texto' ? (
-          <div 
+          <SafeEssayContent
+            html={essay.content}
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: essay.content || '' }}
           />
         ) : (
           <img
