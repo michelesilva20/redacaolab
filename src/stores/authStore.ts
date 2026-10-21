@@ -8,6 +8,7 @@ import {
   repairAuthState,
   type PersistableAuth,
 } from '../lib/demoAuth';
+import { markDemoOnboardingComplete } from '../lib/demoOnboarding';
 import type { User, Role, UserPreferences } from '../types';
 
 interface AuthState extends PersistableAuth {
@@ -69,9 +70,14 @@ export const useAuthStore = create<AuthState>()(
         })),
 
       updateOnboarding: (completed) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, onboardingCompleted: completed } : null,
-        })),
+        set((state) => {
+          if (completed && state.user?.id) {
+            markDemoOnboardingComplete(state.user.id);
+          }
+          return {
+            user: state.user ? { ...state.user, onboardingCompleted: completed } : null,
+          };
+        }),
 
       updatePreferences: (preferences) =>
         set((state) => ({

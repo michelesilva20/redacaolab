@@ -1,4 +1,5 @@
 import { getUserByRole } from '../mocks/users';
+import { applyDemoOnboardingFlag } from './demoOnboarding';
 import type { Role, User } from '../types';
 
 export const AUTH_STORAGE_KEY = 'redacaolab-auth';
@@ -17,7 +18,7 @@ export function isValidAuthSession(
 }
 
 export function cloneDemoUserByRole(role: Role): User {
-  return structuredClone(getUserByRole(role));
+  return applyDemoOnboardingFlag(structuredClone(getUserByRole(role)));
 }
 
 export interface PersistableAuth {
@@ -57,7 +58,7 @@ export function repairAuthState(state: PersistableAuth): PersistableAuth {
 
   const user = state.user as User;
   const nextUser = isConsistentDemoIdentity(user, role)
-    ? structuredClone(user)
+    ? applyDemoOnboardingFlag(structuredClone(user))
     : cloneDemoUserByRole(role);
 
   return {

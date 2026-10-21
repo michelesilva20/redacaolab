@@ -104,7 +104,13 @@ export function OnboardingModal() {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      data-testid="onboarding-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -136,7 +142,7 @@ export function OnboardingModal() {
               </div>
             ))}
           </div>
-          <h2 className="text-2xl font-bold">{steps[currentStep - 1].title}</h2>
+          <h2 id="onboarding-title" className="text-2xl font-bold">{steps[currentStep - 1].title}</h2>
           <p className="text-white/80 mt-1">{steps[currentStep - 1].description}</p>
         </div>
 
