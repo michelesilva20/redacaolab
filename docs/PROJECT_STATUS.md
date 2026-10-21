@@ -132,7 +132,13 @@ npm test
 
 **Ambiente:** Windows 10, Node v24.16.0, npm 11.13.0.
 
-Não houve smoke manual no browser nesta sessão. A persistência após F5 foi coberta por teste de `rehydrate` + `repairAuthState`, não por navegação real.
+**Smoke no browser (`VALIDADO EM EXECUÇÃO`, viewport estreito, Vite em `http://localhost:3000`):**
+
+- `/app` sem sessão redirecionou para `/login`.
+- Login sem campos de e-mail/senha; copy de demonstração visível.
+- Entrar como Professor abriu `/app` com **Prof. Maria Santos** e menu de professor (Turmas/Relatórios).
+- Trocar para Aluno carregou **João Pedro**, removeu Turmas/Relatórios e abriu o onboarding (mock com `onboardingCompleted: false`).
+- Persistência após F5 coberta por teste de `rehydrate` + `repairAuthState`, não por reload manual.
 
 ## 8. Registro de entregas
 
