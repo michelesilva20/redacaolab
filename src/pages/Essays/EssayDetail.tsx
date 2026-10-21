@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, FileText, Image, Clock, Edit } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
 import { ForbiddenPage } from '../../components/ForbiddenPage';
-import { canViewOwnEssay } from '../../lib/permissions';
+import { canEditDraft, canViewOwnEssay } from '../../lib/permissions';
 import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -84,7 +84,7 @@ export function EssayDetail() {
           <div className="text-right text-sm text-neutral-500">
             <div className="flex items-center gap-1 justify-end">
               <Clock className="w-4 h-4" />
-              {formatDate(essay.createdAt)}
+              {formatDate(essay.updatedAt || essay.createdAt)}
             </div>
             {essay.wordCount > 0 && (
               <p className="mt-1">{essay.wordCount} palavras</p>
@@ -119,11 +119,13 @@ export function EssayDetail() {
       )}
 
       {/* Actions */}
-      {essay.status === 'rascunho' && (
+      {canEditDraft(userId, essay) && (
         <div className="flex justify-end">
-          <Button variant="gradient" rightIcon={<Edit className="w-4 h-4" />}>
-            Continuar editando
-          </Button>
+          <Link to={`/app/redacoes/${essay.id}/editar`}>
+            <Button variant="gradient" rightIcon={<Edit className="w-4 h-4" />}>
+              Continuar editando
+            </Button>
+          </Link>
         </div>
       )}
 

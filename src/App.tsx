@@ -105,6 +105,14 @@ function App() {
               }
             />
             <Route
+              path="redacoes/:id/editar"
+              element={
+                <RoleRoute permission="essayEdit">
+                  <NewEssay />
+                </RoleRoute>
+              }
+            />
+            <Route
               path="redacoes/:id"
               element={
                 <RoleRoute permission="essayDetail">

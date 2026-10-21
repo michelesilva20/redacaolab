@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   themes: ALL_ROLES,
   essays: ALL_ROLES,
   essayCreate: ['aluno'],
+  essayEdit: ['aluno'],
   essayDetail: ['aluno'],
   correction: ['professor'],
   feedback: ['aluno'],
@@ -70,8 +71,12 @@ const ROUTE_RULES: RouteRule[] = [
     match: (path) => path === '/app/redacoes/nova' || path.startsWith('/app/redacoes/nova/'),
   },
   {
+    permission: 'essayEdit',
+    match: (path) => /^\/app\/redacoes\/(?!nova(?:\/|$))[^/]+\/editar\/?$/.test(path),
+  },
+  {
     permission: 'essayDetail',
-    match: (path) => /^\/app\/redacoes\/(?!nova(?:\/|$))[^/]+/.test(path),
+    match: (path) => /^\/app\/redacoes\/(?!nova(?:\/|$))[^/]+\/?$/.test(path),
   },
   { permission: 'essays', match: (path) => path === '/app/redacoes' || path === '/app/redacoes/' },
   { permission: 'correction', match: (path) => path.startsWith('/app/correcao') },
@@ -112,4 +117,15 @@ export function canViewFeedback(
 
 export function canCorrectEssay(essay: { status: string } | null | undefined): boolean {
   return Boolean(essay && (CORRECTABLE_STATUSES as readonly string[]).includes(essay.status));
+}
+
+export function canEditDraft(
+  userId: string | null | undefined,
+  essay: { userId: string; status: string; type?: string } | null | undefined
+): boolean {
+  return (
+    canViewOwnEssay(userId, essay) &&
+    essay?.status === 'rascunho' &&
+    (essay.type ?? 'texto') === 'texto'
+  );
 }

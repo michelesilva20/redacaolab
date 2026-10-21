@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { PenTool, FileText, Image, Clock, CheckCircle, Edit3 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
 import { IfCan } from '../../components/IfCan';
-import { hasPermission } from '../../lib/permissions';
+import { canEditDraft, hasPermission } from '../../lib/permissions';
+import { stripHtmlPreview } from '../../lib/essayPersistence';
 import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -57,6 +58,9 @@ export function Essays() {
     }
     if (hasPermission(role, 'feedback') && essay.status === 'corrigida') {
       return `/app/feedback/${essay.id}`;
+    }
+    if (hasPermission(role, 'essayEdit') && canEditDraft(userId, essay)) {
+      return `/app/redacoes/${essay.id}/editar`;
     }
     if (hasPermission(role, 'essayDetail')) {
       return `/app/redacoes/${essay.id}`;
@@ -134,12 +138,12 @@ export function Essays() {
                     
                     {essay.content && (
                       <p className="text-sm text-neutral-500 line-clamp-1 mb-2">
-                        {truncate(essay.content, 100)}
+                        {truncate(stripHtmlPreview(essay.content), 100)}
                       </p>
                     )}
 
                     <div className="flex items-center gap-4 text-sm text-neutral-500">
-                      <span>{formatRelativeTime(essay.createdAt)}</span>
+                      <span>{formatRelativeTime(essay.updatedAt || essay.createdAt)}</span>
                       {essay.wordCount > 0 && (
                         <span>{essay.wordCount} palavras</span>
                       )}
