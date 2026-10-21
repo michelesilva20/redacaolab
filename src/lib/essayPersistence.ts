@@ -1,5 +1,6 @@
 import type { Essay } from '../types';
 import { EssayStorageError } from './essayErrors';
+import { normalizeTimerSnapshot } from './essayTimer';
 
 export const ESSAY_STORE_KEY = 'redacaolab-essays-v1';
 export const ESSAY_QUARANTINE_KEY = 'redacaolab-essays-v1-quarantine';
@@ -22,6 +23,9 @@ export type PersistedEssayRecord = {
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
+  timerElapsedMs?: number;
+  timerRunning?: boolean;
+  timerStartedAt?: string;
 };
 
 export type EssayStorePayload = {
@@ -89,6 +93,8 @@ export function isPersistedEssayRecord(value: unknown): value is PersistedEssayR
 export function toPersistedEssayRecord(value: unknown): PersistedEssayRecord | null {
   if (!isPersistedEssayRecord(value)) return null;
 
+  const timer = normalizeTimerSnapshot(value);
+
   return {
     id: value.id,
     userId: value.userId,
@@ -102,6 +108,13 @@ export function toPersistedEssayRecord(value: unknown): PersistedEssayRecord | n
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     submittedAt: value.submittedAt,
+    ...(timer
+      ? {
+          timerElapsedMs: timer.elapsedMs,
+          timerRunning: timer.running,
+          timerStartedAt: timer.startedAt ?? undefined,
+        }
+      : {}),
   };
 }
 

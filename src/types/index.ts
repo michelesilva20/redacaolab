@@ -83,6 +83,9 @@ export interface Essay {
   createdAt: string;
   updatedAt?: string;
   submittedAt?: string;
+  timerElapsedMs?: number;
+  timerRunning?: boolean;
+  timerStartedAt?: string;
   correction?: Correction;
 }
 

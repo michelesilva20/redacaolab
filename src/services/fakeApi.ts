@@ -16,6 +16,7 @@ import {
   saveTextDraft,
   submitTextEssay,
 } from '../lib/essayRepository';
+import type { EssayTimerSnapshot } from '../lib/essayTimer';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const randomDelay = () => delay(300 + Math.random() * 500);
@@ -133,6 +134,7 @@ export const fakeApi = {
       content?: string;
       notes?: string;
       wordCount?: number;
+      timer?: EssayTimerSnapshot;
     }): Promise<Essay> => {
       await randomDelay();
       return saveTextDraft(data);
@@ -146,6 +148,7 @@ export const fakeApi = {
       content?: string;
       notes?: string;
       wordCount?: number;
+      timer?: EssayTimerSnapshot;
     }): Promise<Essay> => {
       await randomDelay();
       return submitTextEssay(data);

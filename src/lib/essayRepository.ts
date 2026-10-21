@@ -11,6 +11,7 @@ import {
   type PersistedEssayRecord,
 } from './essayPersistence';
 import { sanitizeEssayHtml } from './sanitizeEssayHtml';
+import type { EssayTimerSnapshot } from './essayTimer';
 
 const MIN_SUBMIT_WORDS = 100;
 
@@ -22,6 +23,7 @@ export type EssayWriteInput = {
   content?: string;
   notes?: string;
   wordCount?: number;
+  timer?: EssayTimerSnapshot;
 };
 
 type SessionPatch = Partial<Pick<Essay, 'status' | 'correction'>>;
@@ -67,8 +69,29 @@ function hydratePersisted(record: PersistedEssayRecord): Essay {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       submittedAt: record.submittedAt,
+      timerElapsedMs: record.timerElapsedMs,
+      timerRunning: record.timerRunning,
+      timerStartedAt: record.timerStartedAt,
     })
   );
+}
+
+function timerFields(timer?: EssayTimerSnapshot, fallback?: Essay): Pick<
+  PersistedEssayRecord,
+  'timerElapsedMs' | 'timerRunning' | 'timerStartedAt'
+> {
+  if (timer) {
+    return {
+      timerElapsedMs: timer.elapsedMs,
+      timerRunning: timer.running,
+      timerStartedAt: timer.startedAt ?? undefined,
+    };
+  }
+  return {
+    timerElapsedMs: fallback?.timerElapsedMs,
+    timerRunning: fallback?.timerRunning,
+    timerStartedAt: fallback?.timerStartedAt,
+  };
 }
 
 function resolveWordCount(content: string, provided?: number): number {
@@ -183,6 +206,7 @@ export function saveTextDraft(input: EssayWriteInput): Essay {
       createdAt: current.createdAt,
       updatedAt: now,
       submittedAt: current.submittedAt,
+      ...timerFields(input.timer, current),
     });
   }
 
@@ -198,6 +222,7 @@ export function saveTextDraft(input: EssayWriteInput): Essay {
     wordCount,
     createdAt: now,
     updatedAt: now,
+    ...timerFields(input.timer),
   });
 }
 
@@ -232,6 +257,7 @@ export function submitTextEssay(input: EssayWriteInput): Essay {
       createdAt: current.createdAt,
       updatedAt: now,
       submittedAt: now,
+      ...timerFields(input.timer, current),
     });
   }
 
@@ -248,6 +274,37 @@ export function submitTextEssay(input: EssayWriteInput): Essay {
     createdAt: now,
     updatedAt: now,
     submittedAt: now,
+    ...timerFields(input.timer),
+  });
+}
+
+export function persistEssayTimer(actorId: string, essayId: string, timer: EssayTimerSnapshot): Essay {
+  const actor = requireActor(actorId);
+  const current = getMergedEssayById(essayId);
+  if (!current) {
+    throw new EssayDomainError('not_found', 'Redação não encontrada.');
+  }
+  if (current.userId !== actor) {
+    throw new EssayDomainError('forbidden', 'Você não pode atualizar o cronômetro de outro perfil.');
+  }
+  if (current.type !== 'texto') {
+    throw new EssayDomainError('invalid', 'O cronômetro só se aplica a redações digitadas.');
+  }
+
+  return persistRecord({
+    id: current.id,
+    userId: current.userId,
+    themeId: current.themeId,
+    type: 'texto',
+    content: current.content ?? '',
+    category: current.category,
+    status: current.status,
+    notes: current.notes,
+    wordCount: current.wordCount,
+    createdAt: current.createdAt,
+    updatedAt: current.updatedAt ?? current.createdAt,
+    submittedAt: current.submittedAt,
+    ...timerFields(timer),
   });
 }
 
