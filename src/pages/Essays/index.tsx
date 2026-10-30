@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PenTool, FileText, Image, Clock, CheckCircle, Edit3 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { IfCan } from '../../components/IfCan';
+import { canEditDraft, hasPermission } from '../../lib/permissions';
+import { stripHtmlPreview } from '../../lib/essayPersistence';
 import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -20,13 +23,14 @@ const statusIcons: Record<string, React.ReactNode> = {
 };
 
 export function Essays() {
-  const { user, simulatedRole } = useAuthStore();
+  const { user } = useAuthStore();
   const userId = user?.id || 'user-aluno-1';
-  const isProfessor = simulatedRole === 'professor';
+  const role = user?.role;
+  const canCorrect = hasPermission(role, 'correction');
 
   const { data: essays, isLoading } = useQuery({
-    queryKey: ['essays', simulatedRole, userId],
-    queryFn: () => isProfessor 
+    queryKey: ['essays', role, userId],
+    queryFn: () => canCorrect
       ? fakeApi.essays.getForCorrection()
       : fakeApi.essays.getByUser(userId),
   });
@@ -36,7 +40,7 @@ export function Essays() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-display font-bold text-neutral-800">
-            {isProfessor ? 'Redações para corrigir' : 'Minhas Redações'}
+            {canCorrect ? 'Redações para corrigir' : 'Minhas Redações'}
           </h1>
         </div>
         <div className="space-y-4">
@@ -49,13 +53,19 @@ export function Essays() {
   }
 
   const getEssayLink = (essay: Essay) => {
-    if (isProfessor) {
+    if (hasPermission(role, 'correction')) {
       return `/app/correcao/${essay.id}`;
     }
-    if (essay.status === 'corrigida') {
+    if (hasPermission(role, 'feedback') && essay.status === 'corrigida') {
       return `/app/feedback/${essay.id}`;
     }
-    return `/app/redacoes/${essay.id}`;
+    if (hasPermission(role, 'essayEdit') && canEditDraft(userId, essay)) {
+      return `/app/redacoes/${essay.id}/editar`;
+    }
+    if (hasPermission(role, 'essayDetail')) {
+      return `/app/redacoes/${essay.id}`;
+    }
+    return '/app/redacoes';
   };
 
   return (
@@ -64,33 +74,33 @@ export function Essays() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold text-neutral-800">
-            {isProfessor ? 'Redações para corrigir' : 'Minhas Redações'}
+            {canCorrect ? 'Redações para corrigir' : 'Minhas Redações'}
           </h1>
           <p className="text-neutral-500">
-            {isProfessor 
+            {canCorrect 
               ? 'Gerencie as correções pendentes'
               : 'Acompanhe suas redações e correções'
             }
           </p>
         </div>
-        {!isProfessor && (
+        <IfCan permission="essayCreate">
           <Link to="/app/redacoes/nova">
             <Button variant="gradient" rightIcon={<PenTool className="w-4 h-4" />}>
               Nova redação
             </Button>
           </Link>
-        )}
+        </IfCan>
       </div>
 
       {/* Essays List */}
       {essays?.length === 0 ? (
         <EmptyState
-          title={isProfessor ? 'Nenhuma redação pendente' : 'Nenhuma redação ainda'}
-          description={isProfessor 
+          title={canCorrect ? 'Nenhuma redação pendente' : 'Nenhuma redação ainda'}
+          description={canCorrect 
             ? 'Não há redações aguardando correção no momento'
             : 'Comece escrevendo sua primeira redação'
           }
-          action={!isProfessor ? {
+          action={hasPermission(role, 'essayCreate') ? {
             label: 'Escrever redação',
             onClick: () => window.location.href = '/app/redacoes/nova',
           } : undefined}
@@ -128,12 +138,12 @@ export function Essays() {
                     
                     {essay.content && (
                       <p className="text-sm text-neutral-500 line-clamp-1 mb-2">
-                        {truncate(essay.content, 100)}
+                        {truncate(stripHtmlPreview(essay.content), 100)}
                       </p>
                     )}
 
                     <div className="flex items-center gap-4 text-sm text-neutral-500">
-                      <span>{formatRelativeTime(essay.createdAt)}</span>
+                      <span>{formatRelativeTime(essay.updatedAt || essay.createdAt)}</span>
                       {essay.wordCount > 0 && (
                         <span>{essay.wordCount} palavras</span>
                       )}

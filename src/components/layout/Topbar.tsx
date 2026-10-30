@@ -16,6 +16,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { mockNotifications } from '../../mocks/classes';
 import { RoleSwitcher } from '../RoleSwitcher';
+import { hasPermission } from '../../lib/permissions';
 import { cn } from '../../lib/utils';
 
 export function Topbar() {
@@ -185,14 +186,16 @@ export function Topbar() {
                         <User className="w-4 h-4" />
                         Meu Perfil
                       </Link>
-                      <Link
-                        to="/app/configuracoes"
-                        onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Configurações
-                      </Link>
+                      {hasPermission(user?.role, 'settings') && (
+                        <Link
+                          to="/app/configuracoes"
+                          onClick={() => setShowUserMenu(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Configurações
+                        </Link>
+                      )}
                     </div>
                     <div className="py-2 border-t border-neutral-100">
                       <button

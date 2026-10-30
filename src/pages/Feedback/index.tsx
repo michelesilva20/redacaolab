@@ -20,16 +20,21 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { fakeApi } from '../../services/fakeApi';
+import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { canViewFeedback, canViewOwnEssay } from '../../lib/permissions';
+import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { SafeEssayContent } from '../../components/SafeEssayContent';
 import { getCategoryLabel, formatDate } from '../../lib/utils';
 
 export function Feedback() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.id);
 
   const { data: essay, isLoading } = useQuery({
     queryKey: ['essay', id],
@@ -45,18 +50,31 @@ export function Feedback() {
     );
   }
 
-  if (!essay || !essay.correction) {
+  if (essay && !canViewOwnEssay(userId, essay)) {
+    return (
+      <ForbiddenPage
+        title="Feedback de outro aluno"
+        description="Nesta demonstração, o feedback pessoal só aparece para o autor da redação. O backend deverá validar a propriedade do recurso."
+      />
+    );
+  }
+
+  const correction = essay?.correction;
+
+  if (!essay || !canViewFeedback(userId, essay) || !correction) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-xl font-semibold text-neutral-800">Correção não encontrada</h2>
+        <h2 className="text-xl font-semibold text-neutral-800">
+          {correction?.status === 'rascunho'
+            ? 'A correção ainda não foi finalizada'
+            : 'Correção não encontrada'}
+        </h2>
         <Link to="/app/redacoes" className="text-primary-600 mt-2 inline-block">
           Voltar
         </Link>
       </div>
     );
   }
-
-  const { correction } = essay;
   const radarData = correction.competencies.map((c) => ({
     competency: c.id,
     score: c.score,
@@ -211,9 +229,9 @@ export function Feedback() {
               Sua redação
             </h3>
             {essay.type === 'texto' ? (
-              <div 
+              <SafeEssayContent
+                html={essay.content}
                 className="prose prose-sm max-w-none p-4 bg-neutral-50 rounded-xl"
-                dangerouslySetInnerHTML={{ __html: essay.content || '' }}
               />
             ) : (
               <img

@@ -2,14 +2,19 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, FileText, Image, Clock, Edit } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
+import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { canEditDraft, canViewOwnEssay } from '../../lib/permissions';
+import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { SafeEssayContent } from '../../components/SafeEssayContent';
 import { formatDate, getStatusLabel, getStatusColor, getCategoryLabel } from '../../lib/utils';
 
 export function EssayDetail() {
   const { id } = useParams<{ id: string }>();
+  const userId = useAuthStore((state) => state.user?.id);
 
   const { data: essay, isLoading } = useQuery({
     queryKey: ['essay', id],
@@ -33,6 +38,15 @@ export function EssayDetail() {
           Voltar
         </Link>
       </div>
+    );
+  }
+
+  if (!canViewOwnEssay(userId, essay)) {
+    return (
+      <ForbiddenPage
+        title="Redação de outro perfil"
+        description="Nesta demonstração, o aluno só visualiza as próprias redações. O backend deverá validar a propriedade do recurso."
+      />
     );
   }
 
@@ -70,7 +84,7 @@ export function EssayDetail() {
           <div className="text-right text-sm text-neutral-500">
             <div className="flex items-center gap-1 justify-end">
               <Clock className="w-4 h-4" />
-              {formatDate(essay.createdAt)}
+              {formatDate(essay.updatedAt || essay.createdAt)}
             </div>
             {essay.wordCount > 0 && (
               <p className="mt-1">{essay.wordCount} palavras</p>
@@ -83,9 +97,9 @@ export function EssayDetail() {
       <Card>
         <h3 className="font-semibold text-neutral-800 mb-4">Redação</h3>
         {essay.type === 'texto' ? (
-          <div 
+          <SafeEssayContent
+            html={essay.content}
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: essay.content || '' }}
           />
         ) : (
           <img
@@ -105,11 +119,13 @@ export function EssayDetail() {
       )}
 
       {/* Actions */}
-      {essay.status === 'rascunho' && (
+      {canEditDraft(userId, essay) && (
         <div className="flex justify-end">
-          <Button variant="gradient" rightIcon={<Edit className="w-4 h-4" />}>
-            Continuar editando
-          </Button>
+          <Link to={`/app/redacoes/${essay.id}/editar`}>
+            <Button variant="gradient" rightIcon={<Edit className="w-4 h-4" />}>
+              Continuar editando
+            </Button>
+          </Link>
         </div>
       )}
 
