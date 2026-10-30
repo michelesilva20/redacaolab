@@ -13,12 +13,13 @@
 | Repositório | `michelesilva20/redacaolab` (GitHub) |
 | Objetivo | Evoluir o protótipo frontend de redação para plataforma EdTech full stack |
 | Estado de referência | **Protótipo frontend; ainda não é SaaS de produção** |
-| Última revisão documental | 2026-10-30 — Fase 1.9 (publicação da branch e PR Draft) |
+| Última revisão documental | 2026-10-30 — Fase 1.10 (revisão final do PR e sync documental) |
 | Resultado da Fase 1.8 | **PASS** |
-| Resultado da Fase 1.9 | **PASS** — branch publicada; PR Draft aberto; CI remoto verde; **sem merge** |
+| Resultado da Fase 1.9 | **PASS** |
+| Resultado da Fase 1.10 | **PASS / READY** — docs publicadas; CI em `36d21b0` verde; PR Draft sem conflitos; **sem merge** |
 | Regra permanente da IA | `AGENTS.md` |
 | Documentação de produto | `docs/PROJETO.md` |
-| Branch publicada | `chore/phase1-integration-gate` → `origin` em `dec8b3f` |
+| Branch publicada | `chore/phase1-integration-gate` → `origin` em `36d21b0` |
 | Pull Request | [PR #2](https://github.com/michelesilva20/redacaolab/pull/2) — Draft, base `main` |
 | Base remota | `origin/main` `6bfb9df` (inalterada) |
 | Demo pública | `https://emilabs.cloud/demo/redacaolab/` — **não validada** nesta execução |
@@ -29,7 +30,7 @@
 
 **MVP realista:** autenticação real no servidor → aluno rascunha/envia → professor corrige com rubrica da banca → aluno vê feedback persistido → admin básico.
 
-**Fase 1.9 (esta entrega):** publicação controlada de `chore/phase1-integration-gate` e abertura de um único Pull Request Draft para `main`. Sem merge, deploy, force push ou alteração da `main`.
+**Fase 1.10 (esta entrega):** sincronização do commit documental `36d21b0`, atualização do [PR #2](https://github.com/michelesilva20/redacaolab/pull/2) e revalidação do CI. Sem merge, Ready for review automático, deploy ou alteração da `main`.
 
 ## 3. Estado verificado por componente
 
@@ -45,7 +46,7 @@
 | Autorização real no servidor | **Não iniciado** | Persistência no navegador não autoriza |
 | Testes automatizados | **Parciais** | Vitest; **127 testes / 24 arquivos** |
 | Dependências de produção | **Audit 0** | Zod 4.6.7; `npm audit --omit=dev` sem vulnerabilidades |
-| CI | **Run remoto concluído com sucesso** | [run 41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) em `dec8b3f` |
+| CI | **Dois runs remotos com sucesso** | [41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) (`dec8b3f`) e [41083731732](https://github.com/michelesilva20/redacaolab/actions/runs/41083731732) (`36d21b0`) |
 
 ## 4. Fase 1.8 — security hotfix e integration gate
 
@@ -208,9 +209,23 @@ Bloqueadores da integração: **nenhum funcional sem decisão**. Resíduos: over
 | Passos do job | checkout, setup-node 22, `npm ci`, `npm test`, `npm run build`, `npm audit --omit=dev` — todos ✓ |
 | Avisos do Actions | depreciação Node 20 em `actions/checkout@v4` e `actions/setup-node@v4`; `ubuntu-latest` migrará para Ubuntu 26. **Não falharam o job.** |
 | Merge | **não executado** |
-| Este commit de docs | **apenas local** — não republicado sem autorização |
+| Este commit de docs | publicado na Fase 1.10 em `origin` (`36d21b0`) |
 
 Verificações locais desta fase (`VALIDADO EM EXECUÇÃO`): `npm test` 127/24; `npm run build` exit 0 (`index-BX5hjMn2.js` 1488.39 kB); `npm audit --omit=dev` 0; `git status` limpo; `git diff --check` limpo. Audit completo: 9 (dev).
+
+### 4.11 Fase 1.10 — revisão final e sync documental
+
+| Item | Evidência |
+|---|---|
+| Ancestralidade | `36d21b0` é filho direto de `dec8b3f`; working tree limpa antes do push |
+| Diff do commit | apenas `docs/PROJECT_STATUS.md` e `docs/PROJETO.md`; sem código, deps ou workflow |
+| Push | `git push origin chore/phase1-integration-gate` — remoto `36d21b02af4a801fdc90d3f9f66eed26fbaf1edb` |
+| `origin/main` | permanece `6bfb9df` |
+| PR #2 | Draft, OPEN, base `main`, `MERGEABLE` / `CLEAN`, sem auto-merge |
+| Commits no PR | **40** (39 de implementação + 1 documental) |
+| CI em `36d21b0` | [run 41083731732](https://github.com/michelesilva20/redacaolab/actions/runs/41083731732) — **success** (52s) |
+| Merge | **não executado**; Ready for review **não** marcado |
+| Recomendação | **READY** para merge commit após autorização humana |
 
 ## 5. Roadmap de entregas
 
@@ -226,6 +241,7 @@ Verificações locais desta fase (`VALIDADO EM EXECUÇÃO`): `npm test` 127/24; 
 | F1.7 — Persistência da correção | **Concluído** | Rascunho e finalização sobrevivem ao F5; 127 testes |
 | F1.8 — Security hotfix e integration gate | **Concluído (PASS)** | Zod 4.6.7; audit prod 0; CI preparado; prontidão de PR |
 | F1.9 — Publicação e PR Draft | **Concluído (PASS)** | Branch em `origin`; [PR #2](https://github.com/michelesilva20/redacaolab/pull/2) Draft; CI verde; sem merge |
+| F1.10 — Revisão final e sync documental | **Concluído (PASS / READY)** | `36d21b0` publicado; segundo CI verde; sem conflitos; sem merge |
 | F1 — Frontend confiável (restante) | **Em andamento** | Lista do admin; rubricas por modalidade; overlay mobile |
 | F2 — Backend e persistência | **Pendente** | RBAC, upload real, HTML no servidor |
 | F3 — Fluxo pedagógico completo | **Pendente** | Auth/RBAC reais |
@@ -277,7 +293,7 @@ npm audit
 | `npm audit --omit=dev` | 2026-10-30 | **0** | Após Zod 4.6.7 |
 | `npm audit` | 2026-10-30 | **9** (dev) | 2 low / 1 moderate / 6 high |
 | `git diff --check` | 2026-10-30 | limpo | — |
-| CI remoto | 2026-10-30 | **success** | [run 41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) em `dec8b3f` |
+| CI remoto | 2026-10-30 | **success** (2 runs) | [41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) `dec8b3f`; [41083731732](https://github.com/michelesilva20/redacaolab/actions/runs/41083731732) `36d21b0` |
 
 **Ambiente:** Windows 10, Node v24.16.0, npm 11.13.0. Dev desta entrega em `http://localhost:3000/`. CI alvo: Node 22 LTS.
 
@@ -285,7 +301,8 @@ npm audit
 
 | Data | Entrega | Branch | Commit(s) | Validação real | Riscos / pendências |
 |---|---|---|---|---|---|
-| 2026-10-30 | Fase 1.9 — push e PR Draft | `chore/phase1-integration-gate` | publicado `dec8b3f`; docs 1.9 só local | 127/127 local; CI remoto success; PR #2 Draft | Sem merge; docs locais não republicados |
+| 2026-10-30 | Fase 1.10 — sync docs e revisão do PR | `chore/phase1-integration-gate` | publicado `36d21b0`; docs 1.10 só local | CI 41083731732 success; MERGEABLE | Sem merge; Ready for review pendente |
+| 2026-10-30 | Fase 1.9 — push e PR Draft | `chore/phase1-integration-gate` | `dec8b3f` + docs `36d21b0` | 127/127 local; CI 41082764786 success; PR #2 Draft | Sem merge |
 | 2026-10-30 | Fase 1.8 — hotfix Zod, CI e gate | `chore/phase1-integration-gate` | `e95d49f` `527e27e` `dec8b3f` | 127/127; build exit 0; audit prod 0; smoke ciclo + identidades + overlay | Overlay mobile P2 |
 | 2026-10-30 | Fase 1.7 — correção persistida | `feat/professor-correction-persist` | `ceff47b` `ac0ad5f` `e573296` `7bd0ae5` | 127/127; build; smoke A/B/C | Sem push; foto só sessão |
 | 2026-10-21 | Fase 1.6 — timer, upload e onboarding | `feat/essay-timer-and-upload` | `3077d1c` `5488733` `0eadbee` `5274648` `b05dd7a` | 110/110; build; audit 0 | Sidebar overlay |
@@ -299,7 +316,7 @@ npm audit
 ## 10. Riscos e bloqueios atuais
 
 - **Produção:** sem backend. `localStorage` e RBAC no cliente não autorizam dados reais de estudantes.
-- **CI remoto:** [run 41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) **success** no SHA `dec8b3f`. Avisos de Node 20 nas actions v4 e de migração do `ubuntu-latest` — não bloqueiam.
+- **CI remoto:** dois runs **success** — [41082764786](https://github.com/michelesilva20/redacaolab/actions/runs/41082764786) (`dec8b3f`) e [41083731732](https://github.com/michelesilva20/redacaolab/actions/runs/41083731732) (`36d21b0`). Avisos de Node 20 nas actions v4 e de migração do `ubuntu-latest` — não bloqueiam.
 - **Dev audit:** 9 advisories de toolchain. Fora do escopo desta fase.
 - **Foto / correção de foto:** só sessão.
 - **Sidebar mobile:** backdrop intercepta cliques em viewport `< lg` até o primeiro dismiss. Impedimento de qualidade, não bloqueador da integração.
@@ -309,14 +326,14 @@ npm audit
 
 ## 11. Próxima ação única e verificável
 
-**Revisar e, se aprovado, marcar o [PR #2](https://github.com/michelesilva20/redacaolab/pull/2) como Ready for review e mesclar com merge commit** (sem squash das fases F0–F1.8). Esta fase **não** executa o merge.
+**Aguardar autorização explícita para marcar o [PR #2](https://github.com/michelesilva20/redacaolab/pull/2) como Ready for review e mesclar com merge commit** (sem squash das fases F0–F1.8). Recomendação desta fase: **READY**. Merge **não** executado.
 
-Se o merge for adiado: republicar (após autorização) o commit local de documentação da 1.9, ou abrir `feat/admin-essay-visibility` a partir de `dec8b3f`.
+O commit local eventual da documentação 1.10 (se existir após este arquivo) **não** deve ser publicado sem nova autorização.
 
 Critérios para autorizar o merge:
 
-1. PR permanece Draft até a revisão; CI em `dec8b3f` continua verde.
+1. PR permanece Draft até a revisão humana; CI em `36d21b0` verde; `mergeable=MERGEABLE`.
 2. Merge commit, sem squash e sem rebase interativo.
-3. Sem force-push e sem deploy automático.
+3. Sem force-push, auto-merge ou deploy automático.
 
-**Não fazer agora:** merge, auto-merge, deploy, backend, segundo push sem autorização, `npm audit fix` indiscriminado.
+**Não fazer agora:** merge, auto-merge, deploy, backend, `npm audit fix` indiscriminado.
