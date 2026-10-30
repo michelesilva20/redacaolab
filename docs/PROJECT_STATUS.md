@@ -13,11 +13,12 @@
 | Repositório | `michelesilva20/redacaolab` (GitHub) |
 | Objetivo | Evoluir o protótipo frontend de redação para plataforma EdTech full stack |
 | Estado de referência | **Protótipo frontend; ainda não é SaaS de produção** |
-| Última revisão documental | 2026-10-30 — Fase 1.7 (persistência da correção do professor) |
+| Última revisão documental | 2026-10-30 — Fase 1.8 (security hotfix e integration gate) |
+| Resultado da Fase 1.8 | **PASS** — com resíduos de qualidade explicitamente decididos como não bloqueadores da integração |
 | Regra permanente da IA | `AGENTS.md` |
 | Documentação de produto | `docs/PROJETO.md` |
-| Branch desta entrega | `feat/professor-correction-persist` (local, sem push) |
-| Base | `feat/essay-timer-and-upload` em `b05dd7a` |
+| Branch desta entrega | `chore/phase1-integration-gate` (local, sem push) |
+| Base | `feat/professor-correction-persist` em `7bd0ae5` |
 | Demo pública | `https://emilabs.cloud/demo/redacaolab/` — **não validada** nesta execução |
 
 ## 2. Escopo do produto e MVP
@@ -26,97 +27,167 @@
 
 **MVP realista:** autenticação real no servidor → aluno rascunha/envia → professor corrige com rubrica da banca → aluno vê feedback persistido → admin básico.
 
-**Fase 1.7 (esta entrega):** persistência demonstrativa da correção do professor no overlay local de redações. Ciclo: aluno envia → professor salva rascunho → retoma → finaliza → aluno vê feedback após F5. Não é backend, atribuição automática nem upload persistente.
+**Fase 1.8 (esta entrega):** hotfix do advisory high do Zod, auditoria integrada da Fase 1, workflow mínimo de CI para PRs futuras e relatório de prontidão para um único PR de integração na `main`. Sem novos módulos de negócio.
 
 ## 3. Estado verificado por componente
 
 | Componente | Estado | Evidência |
 |---|---|---|
 | Frontend (páginas/UI) | **Protótipo operacional em build** | `VALIDADO EM EXECUÇÃO`: `npm run build` exit 0 em 2026-10-30 |
-| Login / papéis / guard | **Demonstração explícita** | Fases 1.1 e 1.4 preservadas |
-| Autorização de rotas (demo) | **UX no cliente** | Matriz + `RoleRoute` + 403 |
+| Login / papéis / guard | **Demonstração explícita** | Fases 1.1 e 1.4; smoke 1.8 (login, persistência, logout, troca) |
+| Autorização de rotas (demo) | **UX no cliente** | 403 em `/app/usuarios` como aluno; RoleSwitcher redireciona para rota segura |
 | Rascunho textual | **Persistência local demonstrativa** | Overlay `redacaolab-essays-v1` |
 | Correção do professor | **Persistência local demonstrativa** | Mesmo overlay; rascunho e finalização |
-| Cronômetro / upload / onboarding | **Preservados** | Fase 1.6 intacta |
+| Cronômetro / upload / onboarding | **Preservados** | Fase 1.6 intacta; upload não reexercitado no smoke 1.8 (testes unitários permanecem) |
 | Backend / banco / upload real | **Não iniciado** | Foto e correção de foto só na sessão |
 | Autorização real no servidor | **Não iniciado** | Persistência no navegador não autoriza |
 | Testes automatizados | **Parciais** | Vitest; **127 testes / 24 arquivos** |
-| Dependências | **Estáveis, com 1 high novo em zod** | RR 7.18.4; TipTap 3.32.0; zod ^4.3.6 |
-| Audit de produção | **1 high (zod)** | `npm audit --omit=dev` em 2026-10-30 |
+| Dependências de produção | **Audit 0** | Zod 4.6.7; `npm audit --omit=dev` sem vulnerabilidades |
+| CI | **Arquivo preparado, sem run remoto** | `.github/workflows/ci.yml`; nunca executado no GitHub nesta fase |
 
-## 4. Fase 1.7 — persistência da correção
+## 4. Fase 1.8 — security hotfix e integration gate
 
-### 4.1 Estado anterior
+### 4.1 Correção do Zod (GHSA-mrhx-c7xc-m3w5)
 
-Após a Fase 1.6 (`b05dd7a`): 110 testes, build verde, audit de produção 0. Redações textuais e o cronômetro sobreviviam ao F5. `fakeApi.corrections.submit` gerava um ID novo a cada save, mutava `mockEssays` e só aplicava `sessionPatches` — a correção sumia no recarregamento.
+| Item | Evidência |
+|---|---|
+| Versão anterior | `zod@^4.3.6` / lockfile 4.3.x (advisory: versões &lt; 4.6.6) |
+| Versão aplicada | `zod@^4.6.7` (mínimo corrigido 4.6.6; instalada a patch mais recente compatível) |
+| Lockfile | `node_modules/zod` → `4.6.7` (`https://registry.npmjs.org/zod/-/zod-4.6.7.tgz`) |
+| `npm ls zod` | `zod@4.6.7` (`VALIDADO EM EXECUÇÃO`) |
+| Uso na aplicação | **Nenhum import** em `src/` (`CONFIRMADO NO CÓDIGO`) |
+| React Hook Form / resolvers | `@hookform/resolvers@^5.2.2` e `react-hook-form@^7.71.1` inalterados; sem mudança de código |
+| Diff | 2 linhas em `package.json` + 8 linhas em `package-lock.json` |
+| O que não foi feito | `npm audit fix --force`, overrides, bump massivo, testes de exaustão de memória |
 
-### 4.2 Estratégia de persistência
+### 4.2 npm audit
 
-**Escolhida:** evoluir `redacaolab-essays-v1` com um campo opcional `correction` no `PersistedEssayRecord`. Uma segunda store concorrente não se justifica: a correção pertence à redação, o overlay já é a fonte de merge e a troca futura por Spring Boot continua atrás de `essayRepository`.
-
-Compatibilidade: registros antigos sem `correction` continuam válidos. Correção inválida é omitida na leitura **sem** apagar a redação nem reescrever o store. Mocks originais não são mutados; overlay local vence no merge.
-
-Foto (`type: imagem`): a correção permanece só na sessão. Não gravamos `imageUrl`/base64 no overlay textual.
-
-### 4.3 Modelo e transições
-
-Uma redação tem no máximo uma correção ativa. O ID da correção é estável (`corr-` + UUID). O conteúdo enviado pelo aluno não é reescrito na correção.
-
-| Operação | Essay.status | Correction.status |
+| Escopo | Antes (Fase 1.7) | Depois (Fase 1.8) |
 |---|---|---|
-| Salvar rascunho | `enviada` \| `em_correcao` → `em_correcao` | `rascunho` |
-| Finalizar (com ou sem rascunho prévio) | → `corrigida` | `finalizada` + `finishedAt` |
+| Produção (`npm audit --omit=dev`) | **1 high** — zod / GHSA-mrhx-c7xc-m3w5 | **0 vulnerabilidades** (`VALIDADO EM EXECUÇÃO`) |
+| Completo (`npm audit`) | toolchain + zod | **9** somente em *devDependencies*: 2 low, 1 moderate, 6 high, 0 critical |
 
-Notas: inteiros 0–200 nas cinco competências da rubrica ENEM efetivamente suportada na UI. Total = soma. Zero é valor válido. UNESP/concursos ainda usam essa escala na tela — não inventamos rubrica própria.
+Vulnerabilidades de desenvolvimento restantes (não corrigidas nesta fase; sem `audit fix`):
 
-Comentários por trecho e highlights existem no tipo e são preservados se já houver; a tela ainda envia/restaura arrays e **não** implementa marcação interativa.
+| Pacote | Severidade | Papel |
+|---|---|---|
+| `@babel/core` | low | toolchain de testes/build |
+| `esbuild` | low | Vite |
+| `baseline-browser-mapping` | moderate | browserslist |
+| `browserslist` | high | toolchain |
+| `nanoid` | high | toolchain |
+| `postcss` | high | CSS |
+| `rollup` | high | Vite |
+| `source-map-js` | high | toolchain |
+| `vite` | high | bundler de desenvolvimento |
 
-### 4.4 Regras de acesso demonstrativas
-
-- Aluno e admin não executam `saveCorrectionDraft` / `finalizeCorrection`.
-- Professor da sessão (qualquer `role === 'professor'` nos mocks) pode assumir redação `enviada` ou `em_correcao`. **Não há atribuição** no modelo atual.
-- Rascunho não enviado e correção já finalizada são recusados na camada de dados.
-- O aluno só vê feedback próprio com `status === 'corrigida'` e correção `finalizada`.
-- Isto continua sendo demonstração. O servidor deverá validar cada operação.
-
-### 4.5 Cache TanStack
-
-`invalidateEssayRelatedQueries` após salvar/finalizar: `['essays']`, `['dashboard']`, `['essay', id]`. A fila do professor usa `['essays', role, userId]`; o prefixo cobre. Sem refetch global.
-
-### 4.6 Arquivos principais
-
-Novos: `src/lib/correctionPersistence.ts`, `src/lib/essayRepository.correction.test.ts`, `src/pages/Correction/Correction.test.tsx`, `src/pages/Feedback/Feedback.test.tsx`.
-
-Alterados: `essayPersistence`, `essayRepository`, `fakeApi`, `permissions` (+ teste), `Correction`, `Feedback`, `docs/PROJECT_STATUS.md`, `docs/PROJETO.md`.
-
-### 4.7 Testes e build
+### 4.3 Testes e build
 
 | Verificação | Resultado |
 |---|---|
-| `npm test` | **127 passed / 24 files** (`VALIDADO EM EXECUÇÃO`) |
-| `npm run build` | **Passou** — `index-Dda2Qvcz.js` 1488.39 kB (gzip 451.13 kB) |
-| `npm audit --omit=dev` | **1 high** — `zod` < 4.6.6, [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) |
+| `npm ci` | **Passou** após encerrar Vite que bloqueava `lightningcss-win32-x64-msvc.node` (272 pacotes) |
+| `npm test` | **127 passed / 24 files** — mesma contagem da Fase 1.7; nenhum teste anterior foi alterado |
+| `npm run build` | **Passou** — `index-BX5hjMn2.js` 1488.39 kB (gzip 451.13 kB) |
+| `git diff --check` | limpo |
+| Novos testes | nenhum — sem lacuna de regressão que exigisse cobertura extra nesta fase |
 
-Os 110 testes da Fase 1.6 permaneceram verdes. Não executamos `npm audit fix`.
+### 4.4 Pipeline de CI
 
-Cobertura nova: iniciar/salvar/retomar correção; ID estável; sem duplicar redação; conteúdo original; finalizar parcial e direta; nota zero e inválida; `finishedAt`; fila; feedback após reset; bloqueio de outro aluno/aluno/admin/finalizada/inexistente; correção inválida isolada; falha de storage; mocks e rascunhos 1.5; timer 1.6; ausência de `data:image`; hidratação da tela; feedback parcial vs finalizado.
+Arquivo: `.github/workflows/ci.yml`.
 
-### 4.8 Validação no navegador
+- Dispara em `pull_request`
+- Permissão `contents: read`
+- Um job `verify` em `ubuntu-latest`, Node **22** LTS, `npm ci` → `npm test` → `npm run build` → `npm audit --omit=dev`
+- Sem credenciais, deploy ou serviços pagos
+- YAML revisado localmente pela estrutura; **não há run remoto** — o workflow só executará quando o repositório for enviado ao GitHub. **Não declarar CI verde.**
 
-Servidor: `http://localhost:3000/`. Identidade `user-aluno-1` / `user-prof-1`. Storage pré-existente **não foi apagado**. Marcador: `Fase17PersistenciaCorrecaoLab`. ID: `essay-6472f056-5f1d-4657-b4fb-0326cd561270`. Correção: `corr-5e958ed4-5300-43ef-914b-3ebed4008eca`.
+### 4.5 Smoke test integrado (navegador)
+
+Servidor: `http://localhost:3000/`. Storage pré-existente **não foi apagado**. Marcador: `Fase18IntegrationGateLab`.
+
+| Artefato | ID |
+|---|---|
+| Redação 1.8 | `essay-5b48c1aa-329c-4654-a923-63f7210d77a2` |
+| Correção 1.8 | `corr-5f00b473-3ae9-4ece-b50e-26b16e048f83` |
+| Redação 1.7 preservada | `essay-6472f056-5f1d-4657-b4fb-0326cd561270` / `corr-5e958ed4-5300-43ef-914b-3ebed4008eca` |
 
 | Passo | Resultado |
 |---|---|
-| Aluno cria, salva e envia (tema-3, 110 palavras) | URL de edição; depois lista |
-| Professor abre a fila e a correção | Formulário com o texto original |
-| Notas (C1 = 0) + parecer + pontos | Persistido; `em_correcao` / `rascunho`; 1 registro |
-| F5 na correção | Campos restaurados (C1 0, parecer Fase17, forças/melhorias) |
-| Finalizar | `corrigida` / `finalizada`; `finishedAt` 2026-10-30T14:12:26.784Z; total 640; mesmo ID |
-| Fila do professor | Sem o ID novo; mocks essay-2/3/4 permanecem |
-| Reabrir correção finalizada | “Redação indisponível para correção”; sem Finalizar |
-| Aluno abre feedback + F5 | 640, parecer, pontos, texto original |
-| Mock essay-1 | Feedback 820 intacto |
-| Store | Sem `data:image`; sem duplicata do ID |
+| Aluno cria, salva rascunho, F5, retoma e envia | ID original mantido |
+| Professor abre fila, salva correção parcial, F5 | Mesmo `corrId`; C1=0; parecer “Parecer parcial Fase18.” |
+| Finalizar | `corrigida` / `finalizada`; `finishedAt` 2026-10-30T14:27:37.793Z; total 640; mesmo ID |
+| Fila do professor | Sem o ID 1.8; mocks essay-2/3/4 permanecem |
+| Aluno abre feedback + F5 | 640, parecer Fase18, pontos, texto original |
+| Feedback de outro aluno (`essay-3`) | “Feedback de outro aluno” |
+| Edição após envio | 403 “Esta redação não pode ser editada”; sem editor |
+| Admin em `/app/redacoes` | Lista vazia (“Nenhuma redação ainda”) — conhecido |
+| Troca aluno ↔ professor ↔ admin | Sessão e menu atualizados |
+| `/app/usuarios` como aluno | 403 “Acesso não permitido” |
+| Troca de perfil em rota restrita | Redireciona para `/app` (navegação segura) |
+| Logout → `/login` → entrar de novo → F5 | Sessão demo persistida (`isAuthenticated` false após Sair; aluno após reentrar) |
+| Overlay `redacaolab-essays-v1` | `version: 1`; 2 registros; sem duplicata; sem `data:image` |
+
+Upload JPEG/PNG, limite 10 MiB e revogação de object URL **não foram reexercitados no smoke 1.8**. Permanecem cobertos pelos testes da Fase 1.6 e pela ausência de base64 no overlay.
+
+### 4.6 Integridade da persistência (`CONFIRMADO NO CÓDIGO` + smoke)
+
+- Mocks originais não são mutados; overlay local vence no merge.
+- IDs estáveis; um registro por redação; correção aninhada.
+- Correção inválida é omitida na leitura sem apagar a redação.
+- Falha de storage não é reportada como sucesso (`EssayStorageError`).
+- Sanitização HTML permanece na renderização.
+- Versão do store: `ESSAY_STORE_VERSION = 1`. Leituras de versão diferente emitem warning e preservam registros válidos. A substituição futura por Spring Boot deve ocorrer atrás de `essayRepository` / contrato de API, sem os consumidores lerem `localStorage`.
+
+### 4.7 Problemas de frontend/UX classificados
+
+| Problema | Severidade | Impacto | Prioridade | Decisão 1.8 |
+|---|---|---|---|---|
+| Overlay da sidebar abre por padrão em viewport `< lg` | Média | Bloqueia o conteúdo até o primeiro clique no backdrop | **P2 — impedimento de qualidade**, não bloqueador funcional da integração desktop | Correção isolada futura: `feat/mobile-sidebar-default` |
+| Admin vê lista de redações vazia | Média | UX enganosa (“Comece escrevendo…”) | P1 | Fora do escopo 1.8 |
+| Rubrica ENEM em UNESP/concursos | Média | Escala pedagógica incorreta | P1 | Sem inventar rubrica |
+| Comentários/highlights não interativos | Baixa | Campos existem; UI não edita trechos | P2 | Sem redesign |
+| Ações decorativas (convidar, planos, etc.) | Baixa | CTA sem persistência real | P2 | Já marcadas como demo onde aplicável |
+| Bundle JS ~1,49 MB (gzip 451 kB) | Baixa | Peso de primeira carga | P2 | Sem refactor de bundle nesta fase |
+
+**Reprodução do overlay mobile (`VALIDADO EM EXECUÇÃO`, viewport 390×844):**
+
+1. `sidebarOpen` inicia `true` em `uiStore`.
+2. Backdrop `fixed inset-0 bg-black/50 z-40 lg:hidden` cobre 390×844.
+3. `elementFromPoint(350, 200)` atinge o overlay; o heading fica sob o drawer (280px).
+4. Clique no overlay fecha o drawer e libera o conteúdo.
+5. Proposta isolada: iniciar fechada abaixo de 1024px (ou `matchMedia('(min-width: 1024px)')`) e não reabrir ao encolher a janela.
+
+**Decisão explícita:** este impedimento **não bloqueia** o PR de integração da Fase 1. O fluxo crítico aluno→professor→aluno funciona em desktop. A correção deve ser uma entrega isolada, sem redesign.
+
+### 4.8 Histórico Git e ancestralidade
+
+Histórico **linear** desde `main` / `origin/main` `6bfb9df`. `merge-base(main, HEAD) = 6bfb9df`. Nenhuma alteração acidental na `main`. Commits em Conventional Commits. Sem rebase, squash ou rewrite nesta fase. Sem `.env` versionado.
+
+| Fase | Branch | Tip |
+|---|---|---|
+| main (local = origin) | `main` | `6bfb9df` |
+| F0 | `chore/project-foundation` | `074db9d` |
+| 1.1 | `fix/auth-guard-and-demo-roles` | `96eb3d5` |
+| 1.2 | `fix/sanitize-essay-html` | `006d484` |
+| 1.3 | `chore/audit-production-advisories` | `2b9c4be` |
+| 1.4 | `fix/role-based-route-authorization` | `bd7d5ae` |
+| 1.5 | `feat/essay-draft-and-resume` | `774deb9` |
+| 1.6 | `feat/essay-timer-and-upload` | `b05dd7a` |
+| 1.7 | `feat/professor-correction-persist` | `7bd0ae5` |
+| 1.8 | `chore/phase1-integration-gate` | `e95d49f` (Zod) · `527e27e` (CI) · tip de documentação desta entrega |
+
+`main...HEAD` (antes dos commits 1.8): 70 arquivos, +7586 / −983. Branches intermediárias são ancestrais da tip atual — **não** mesclar cada uma isoladamente na `main`.
+
+### 4.9 Recomendação de PR (não criado)
+
+**Um único Pull Request** de `chore/phase1-integration-gate` → `main`.
+
+- Preserva todos os Conventional Commits F0–F1.8.
+- Evita duplicar commits das branches intermediárias.
+- Estratégia mais segura: *merge commit* (não squash, não rebase interativo).
+- Não executar push, merge ou deploy sem autorização posterior.
+
+Bloqueadores da integração: **nenhum funcional sem decisão**. Resíduos: overlay mobile (P2, decisão acima), lista do admin (P1, backlog), rubricas por banca (P1), CI ainda sem run remoto.
 
 ## 5. Roadmap de entregas
 
@@ -130,63 +201,68 @@ Servidor: `http://localhost:3000/`. Identidade `user-aluno-1` / `user-prof-1`. S
 | F1.5 — Rascunho e retomada | **Concluído** | Persistência local textual |
 | F1.6 — Timer, upload e onboarding | **Concluído** | Cronômetro real; validação 10 MiB |
 | F1.7 — Persistência da correção | **Concluído** | Rascunho e finalização sobrevivem ao F5; 127 testes |
-| F1 — Frontend confiável (restante) | **Em andamento** | Lista do admin; rubricas por modalidade |
+| F1.8 — Security hotfix e integration gate | **Concluído (PASS)** | Zod 4.6.7; audit prod 0; CI preparado; prontidão de PR |
+| F1 — Frontend confiável (restante) | **Em andamento** | Lista do admin; rubricas por modalidade; overlay mobile |
 | F2 — Backend e persistência | **Pendente** | RBAC, upload real, HTML no servidor |
 | F3 — Fluxo pedagógico completo | **Pendente** | Auth/RBAC reais |
-| F4 — Qualidade e release | **Pendente** | E2E, CI, a11y |
+| F4 — Qualidade e release | **Pendente** | E2E; run remoto do CI; a11y |
 | F5 — Diferenciais | **Pendente** | Rubricas, métricas, IA opcional |
 
 ## 6. Backlog priorizado
 
 | Prioridade | Item | Estado | Aceite resumido |
 |---|---|---|---|
-| P0 / P1 anteriores | Guard, sanitização, audit, RBAC, rascunho, timer, upload, onboarding | **Concluído** | Fases 0–1.6 |
-| P1 | Persistência da correção do professor | **Concluído** | Fase 1.7 |
+| P0 / P1 anteriores | Guard, sanitização, audit, RBAC, rascunho, timer, upload, onboarding, correção | **Concluído** | Fases 0–1.7 |
+| P1 | Advisory zod GHSA-mrhx-c7xc-m3w5 | **Concluído** | Zod 4.6.7; audit prod 0 |
 | P1 | Admin na lista de redações | Pendente | `getByUser(adminId)` tende a vazio |
 | P1 | Rubricas por modalidade | Pendente | UI ainda usa escala ENEM para UNESP/concursos |
 | P1 | Backend Java / persistência | Pendente | API real + RBAC + upload |
-| P2 | Overlay da sidebar no viewport estreito | Pendente | `sidebarOpen` inicia `true`; backdrop `lg:hidden` |
+| P2 | Overlay da sidebar no viewport estreito | Pendente (impedimento de qualidade) | Iniciar fechada abaixo de `lg` |
 | P2 | Correção de foto persistida | Pendente | Hoje só sessão; sem base64 |
 | P2 | Comentários/destaques interativos | Pendente | Campos existem; UI não edita trechos |
-| P2 | Advisory zod GHSA-mrhx-c7xc-m3w5 | Pendente | High de *dev input*; sem `audit fix` nesta fase |
-| P2 | Audit de *devDependencies* / CI / IA | Pendente | Fora do escopo imediato |
+| P2 | Audit de *devDependencies* / bundle | Pendente | 9 advisories de toolchain; JS ~1,49 MB |
 
 ## 7. Decisões arquiteturais
 
 **Definido nesta entrega:**
 
-- Correção aninhada no overlay `redacaolab-essays-v1`, não numa store paralela.
-- Escrita composta status+correção numa única operação lógica.
-- Qualquer professor demo autorizado pode assumir redação elegível; sem fila de distribuição.
-- Feedback do aluno exige correção `finalizada`.
-- Correção de imagem permanece em sessão.
+- Atualizar Zod pela menor versão corrigida compatível (4.6.7), sem `audit fix --force`.
+- CI mínimo em um job, só em Pull Requests, sem deploy.
+- Overlay mobile **não** é bloqueador da integração da Fase 1; correção isolada depois.
+- Um único PR da tip 1.8 para `main`, merge commit, sem squash das fases anteriores.
 
-**Mantido:** overlay textual da Fase 1.5; timer 1.6; salvamento explícito; sanitização; RoleSwitcher; matriz única; frontend na raiz; sem backend.
+**Mantido:** overlay textual da Fase 1.5; correção aninhada da 1.7; RoleSwitcher; matriz única; frontend na raiz; sem backend.
 
 ## 8. Testes, comandos e ambientes
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run build
 npm run preview
 npm test
 npm audit --omit=dev
+npm audit
 ```
 
 | Verificação | Última execução | Resultado | Evidência |
 |---|---|---|---|
-| `npm test` | 2026-10-30 | **127 passed / 24 files** | 110 de regressão + correção |
-| `npm run build` | 2026-10-30 | **Passou** | `index-Dda2Qvcz.js` 1488.39 kB (gzip 451.13 kB) |
-| `npm audit --omit=dev` | 2026-10-30 | **1 high (zod)** | GHSA-mrhx-c7xc-m3w5; sem bump |
+| `npm ci` | 2026-10-30 | **Passou** | 272 pacotes |
+| `npm test` | 2026-10-30 | **127 passed / 24 files** | Sem alteração de testes 1.7 |
+| `npm run build` | 2026-10-30 | **Passou** | `index-BX5hjMn2.js` 1488.39 kB (gzip 451.13 kB) |
+| `npm audit --omit=dev` | 2026-10-30 | **0** | Após Zod 4.6.7 |
+| `npm audit` | 2026-10-30 | **9** (dev) | 2 low / 1 moderate / 6 high |
+| `git diff --check` | 2026-10-30 | limpo | — |
+| CI remoto | — | **não executado** | Arquivo local apenas |
 
-**Ambiente:** Windows 10, Node v24.16.0, npm 11.13.0. Dev desta entrega em `http://localhost:3000/`.
+**Ambiente:** Windows 10, Node v24.16.0, npm 11.13.0. Dev desta entrega em `http://localhost:3000/`. CI alvo: Node 22 LTS.
 
 ## 9. Registro de entregas
 
 | Data | Entrega | Branch | Commit(s) | Validação real | Riscos / pendências |
 |---|---|---|---|---|---|
-| 2026-10-30 | Fase 1.7 — correção persistida | `feat/professor-correction-persist` | `ceff47b` `ac0ad5f` `e573296` + docs | 127/127; build exit 0; smoke A/B/C | Sem push; 1 high zod; foto só sessão |
+| 2026-10-30 | Fase 1.8 — hotfix Zod, CI e gate | `chore/phase1-integration-gate` | `e95d49f` `527e27e` + docs | 127/127; build exit 0; audit prod 0; smoke ciclo + identidades + overlay | Sem push; CI sem run remoto; overlay mobile P2 |
+| 2026-10-30 | Fase 1.7 — correção persistida | `feat/professor-correction-persist` | `ceff47b` `ac0ad5f` `e573296` `7bd0ae5` | 127/127; build; smoke A/B/C | Sem push; foto só sessão |
 | 2026-10-21 | Fase 1.6 — timer, upload e onboarding | `feat/essay-timer-and-upload` | `3077d1c` `5488733` `0eadbee` `5274648` `b05dd7a` | 110/110; build; audit 0 | Sidebar overlay |
 | 2026-10-21 | Fase 1.5 — rascunho e retomada | `feat/essay-draft-and-resume` | `774deb9` e anteriores | 94/94 | Store local ≠ produção |
 | 2026-10-21 | Fase 1.4 — RBAC de rotas | `fix/role-based-route-authorization` | `bd7d5ae` | 66/66 | Autorização só no cliente |
@@ -198,21 +274,24 @@ npm audit --omit=dev
 ## 10. Riscos e bloqueios atuais
 
 - **Produção:** sem backend. `localStorage` e RBAC no cliente não autorizam dados reais de estudantes.
-- **zod 4.3.x:** advisory GHSA-mrhx-c7xc-m3w5 (exaustão de memória em coleções grandes). Origem: dependência já presente; não introduzida pelo código da 1.7. Impacto na demo: baixo (não há parser Zod de payload arbitrário nesta fase). Sem `npm audit fix`.
+- **CI remoto:** workflow existe; nenhum run no GitHub. Não afirmar pipeline verde.
+- **Dev audit:** 9 advisories de toolchain. Fora do escopo desta fase.
 - **Foto / correção de foto:** só sessão.
-- **Sidebar mobile:** backdrop intercepta cliques em viewport `< lg`.
+- **Sidebar mobile:** backdrop intercepta cliques em viewport `< lg` até o primeiro dismiss. Impedimento de qualidade, não bloqueador da integração.
+- **Admin:** lista de redações vazia.
 - **Sem atribuição** de professor; qualquer professor demo pode abrir a mesma redação.
-- **Bloqueios:** nenhum. Push/PR/deploy exigem autorização.
+- **Bloqueios funcionais da integração:** nenhum. Push/PR/deploy exigem autorização.
 
 ## 11. Próxima ação única e verificável
 
-**Abrir `feat/admin-essay-visibility` a partir de `feat/professor-correction-persist` e definir o que o admin vê na lista de redações, sem backend e sem inventar métricas.**
+**Após autorização explícita:** publicar `chore/phase1-integration-gate` e abrir **um** Pull Request para `main` (merge commit, sem squash das fases). Sem autorização, não fazer push.
 
-Critérios de aceite:
+Se a integração na `main` for adiada, a próxima entrega de produto é `feat/admin-essay-visibility` a partir desta tip, definindo o que o admin vê na lista de redações, sem backend e sem inventar métricas.
 
-1. Admin deixa de cair numa lista vazia enganosa.
-2. Ação alinhada à matriz da Fase 1.4 (sem conceder correção ao admin).
-3. Os 127 testes atuais continuam verdes + cobertura da lista.
-4. `docs/PROJECT_STATUS.md` atualizado com evidência.
+Critérios de aceite do PR (quando autorizado):
 
-**Não fazer nessa tarefa:** backend, JWT, upload em nuvem, correção por IA, redesign, push/merge, nem `npm audit fix` indiscriminado.
+1. Histórico F0–F1.8 preservado.
+2. CI remoto executa `npm ci`, testes, build e audit de produção.
+3. Sem force-push, rebase interativo ou squash das fases.
+
+**Não fazer agora:** backend, JWT, upload em nuvem, correção por IA, redesign, push/merge sem autorização, `npm audit fix` indiscriminado.

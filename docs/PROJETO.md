@@ -33,7 +33,7 @@ Tudo isso roda no navegador. Login, dados, correções e gamificação são simu
 | Correção por competências na interface | Correção automática por IA |
 | Fake API com delay e TanStack Query | Persistência de produção; foto de redação ainda some ao recarregar |
 
-O manifesto de dependências também tem um ponto a validar: `react` e `react-dom` não estão declarados como dependências diretas no `package.json`, embora a aplicação os use.
+`react` e `react-dom` estão declarados como dependências diretas. `zod` permanece no manifesto (versão corrigida ≥ 4.6.6) e ainda não é importado em `src/`.
 
 ---
 
@@ -50,6 +50,7 @@ O manifesto de dependências também tem um ponto a validar: `react` e `react-do
 | TanStack Query | Fetch da fake API, cache e mutations |
 | React Hook Form + Zod | Presentes no projeto; o login demo não usa mais formulário de credenciais |
 | Vitest + Testing Library | Testes de guard, papéis, persistência e sanitização |
+| GitHub Actions | Workflow mínimo de PR (testes, build, audit de produção); ainda sem run remoto comprovado |
 | DOMPurify | Sanitização do HTML de redação antes de renderizar |
 | TipTap | Editor rico da redação |
 | Recharts | Radar de competências, linhas e barras |
@@ -506,7 +507,10 @@ npm run dev      # Vite em http://localhost:3000
 npm run build    # tsc + vite build
 npm run preview  # preview do build
 npm test         # Vitest (guard, papéis, persistência, login demo)
+npm audit --omit=dev
 ```
+
+Há um workflow em `.github/workflows/ci.yml` para Pull Requests futuras. Ele ainda não foi executado no GitHub.
 
 Na tela de login:
 
