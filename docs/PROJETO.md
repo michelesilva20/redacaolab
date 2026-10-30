@@ -50,7 +50,7 @@ Tudo isso roda no navegador. Login, dados, correções e gamificação são simu
 | TanStack Query | Fetch da fake API, cache e mutations |
 | React Hook Form + Zod | Presentes no projeto; o login demo não usa mais formulário de credenciais |
 | Vitest + Testing Library | Testes de guard, papéis, persistência e sanitização |
-| GitHub Actions | Workflow mínimo de PR (testes, build, audit de produção); ainda sem run remoto comprovado |
+| GitHub Actions | Workflow mínimo de PR (testes, build, audit de produção); primeiro run remoto em 2026-10-30 no PR #2 |
 | DOMPurify | Sanitização do HTML de redação antes de renderizar |
 | TipTap | Editor rico da redação |
 | Recharts | Radar de competências, linhas e barras |
@@ -510,7 +510,7 @@ npm test         # Vitest (guard, papéis, persistência, login demo)
 npm audit --omit=dev
 ```
 
-Há um workflow em `.github/workflows/ci.yml` para Pull Requests futuras. Ele ainda não foi executado no GitHub.
+Há um workflow em `.github/workflows/ci.yml` para Pull Requests. O primeiro run remoto (PR #2, 2026-10-30) concluiu com sucesso.
 
 Na tela de login:
 
