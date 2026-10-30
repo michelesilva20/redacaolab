@@ -140,9 +140,9 @@ O estado que precisa sobreviver ao F5:
 
 - `authStore` (Zustand + `persist`, chave `redacaolab-auth`)
 - conclusão do onboarding do aluno demo (`redacaolab-onboarding-v1`, por `userId`)
-- redações **textuais** do aluno (rascunho e enviada) no overlay `redacaolab-essays-v1`, inclusive metadados do cronômetro
+- redações **textuais** do aluno (rascunho, enviada, em correção e corrigida) no overlay `redacaolab-essays-v1`, inclusive metadados do cronômetro e a correção do professor
 
-Turmas criadas, aulas concluídas, fotos de redação e correções do professor ainda vivem só na memória da sessão. O `localStorage` de redações é demonstrativo e **não** substitui banco nem autorização de produção.
+Turmas criadas, aulas concluídas e fotos de redação ainda vivem só na memória da sessão. Correção de foto também some no F5. O `localStorage` de redações é demonstrativo e **não** substitui banco nem autorização de produção.
 
 ---
 
@@ -285,7 +285,7 @@ Login como professor
     → Turmas e relatórios
 ```
 
-A fila usa `fakeApi.essays.getForCorrection()`. Finalizar a correção muda o status da redação para `corrigida` e grava a correção no objeto em memória.
+A fila usa `fakeApi.essays.getForCorrection()`. Salvar rascunho de correção grava no overlay local (`em_correcao` + correção `rascunho`). Finalizar persiste `corrigida` + correção `finalizada` na mesma operação lógica e tira a redação da fila. Não há atribuição de professor: qualquer professor demonstrativo autorizado pode assumir uma redação elegível.
 
 ### 9.4 Jornada do admin
 
@@ -381,9 +381,9 @@ Os tipos em `src/types/index.ts` são o contrato do produto.
 
 **Theme** — título, eixo, dificuldade, repertório, checklist, exemplos e destaque.
 
-**Essay** — aluno, tema, tipo (`texto` ou `imagem`), conteúdo ou URL da imagem (só sessão), banca, status, contagem de palavras, metadados opcionais do cronômetro (`timerElapsedMs`, `timerRunning`, `timerStartedAt`) e correção opcional.
+**Essay** — aluno, tema, tipo (`texto` ou `imagem`), conteúdo ou URL da imagem (só sessão), banca, status, contagem de palavras, metadados opcionais do cronômetro (`timerElapsedMs`, `timerRunning`, `timerStartedAt`) e no máximo uma correção ativa.
 
-**Correction** — professor, competências, nota total, feedback geral, pontos fortes, melhorias, comentários, highlights e status (`rascunho` ou `finalizada`).
+**Correction** — vínculo com a redação e o professor, cinco competências da rubrica ENEM efetivamente suportada (0–200), nota total calculada, feedback geral, pontos fortes, melhorias, comentários/highlights (campos preservados; a UI ainda não edita trechos), status (`rascunho` ou `finalizada`), `createdAt` estável e `finishedAt` na finalização.
 
 **Class** — nome, professor e lista de alunos.
 
@@ -404,7 +404,7 @@ Os tipos em `src/types/index.ts` são o contrato do produto.
 | `lessons` | listar, detalhe, marcar como concluída |
 | `themes` | listar, detalhe, tema em destaque |
 | `essays` | listar, por usuário, fila de correção, `saveDraft`, `submit`, criar (foto só na sessão) |
-| `corrections` | buscar por redação, enviar/salvar |
+| `corrections` | buscar por redação; salvar rascunho ou finalizar via `essayRepository` |
 | `classes` | listar, por professor/aluno, criar |
 | `notifications` | listar, marcar como lida |
 | `dashboard` | painel agregado + dados de gamificação |
@@ -519,7 +519,7 @@ Na tela de login:
 ## 18. Limites do protótipo (importante para evolução)
 
 1. Sem backend, banco, autenticação real ou autorização de rota no servidor.
-2. Rascunhos e envios **textuais** do aluno (incluindo o cronômetro) sobrevivem ao F5 no `localStorage` (demonstração). Correção do professor, foto de redação, turma nova e aula concluída ainda somem ao recarregar.
+2. Rascunhos, envios e correções **textuais** (incluindo o cronômetro) sobrevivem ao F5 no `localStorage` (demonstração). Foto de redação, correção de foto, turma nova e aula concluída ainda somem ao recarregar.
 3. A conclusão do onboarding do aluno demo sobrevive ao F5 e à troca de perfil (`redacaolab-onboarding-v1`).
 4. O `localStorage` de redações não é armazenamento seguro nem autorização: qualquer perfil demo no mesmo navegador pode lê-lo.
 5. O acesso continua sendo demonstração no cliente, não autenticação de servidor.
@@ -539,9 +539,10 @@ Na tela de login:
 3. `src/services/fakeApi.ts` — o que cada tela “busca”
 4. `src/lib/essayRepository.ts` e `essayPersistence.ts` — overlay local das redações textuais
 5. `src/hooks/useEssayTimer.ts` e `src/lib/imageUpload.ts` — cronômetro e validação de foto
-6. `src/stores/authStore.ts` e `src/lib/demoOnboarding.ts` — sessão demo e onboarding
-7. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
-8. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
-9. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
+6. `src/lib/correctionPersistence.ts` e `saveCorrectionDraft` / `finalizeCorrection` — correção do professor
+7. `src/stores/authStore.ts` e `src/lib/demoOnboarding.ts` — sessão demo e onboarding
+8. `src/components/layout/Sidebar.tsx` — o que cada papel enxerga
+9. `src/lib/sanitizeEssayHtml.ts` e `SafeEssayContent` — HTML de redação antes de renderizar
+10. `src/pages/Essays/NewEssay.tsx` → `Correction` → `Feedback` — o fluxo central
 
 Com esses arquivos dá para entender o projeto inteiro e encaixar um backend depois, trocando a `fakeApi` / `essayRepository` por chamadas reais sem redesenhar as telas.
