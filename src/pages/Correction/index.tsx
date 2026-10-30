@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { fakeApi } from '../../services/fakeApi';
 import { ForbiddenPage } from '../../components/ForbiddenPage';
+import { EssayDomainError } from '../../lib/essayErrors';
+import { invalidateEssayRelatedQueries } from '../../lib/essayQueryInvalidation';
 import { canCorrectEssay } from '../../lib/permissions';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -42,24 +44,34 @@ const categoryColors: Record<string, string> = {
   intervencao: 'bg-primary-100 text-primary-700 border-primary-300',
 };
 
+const DEFAULT_SCORES: Record<string, number> = {
+  C1: 160,
+  C2: 160,
+  C3: 160,
+  C4: 160,
+  C5: 160,
+};
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof EssayDomainError) return error.message;
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 export function Correction() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { addToast } = useUIStore();
 
-  const [scores, setScores] = useState<Record<string, number>>({
-    C1: 160,
-    C2: 160,
-    C3: 160,
-    C4: 160,
-    C5: 160,
-  });
+  const [scores, setScores] = useState<Record<string, number>>(DEFAULT_SCORES);
   const [feedbacks, setFeedbacks] = useState<Record<string, string>>({});
   const [generalFeedback, setGeneralFeedback] = useState('');
   const [strengths, setStrengths] = useState<string[]>(['']);
   const [improvements, setImprovements] = useState<string[]>(['']);
   const [zoom, setZoom] = useState(1);
+  const [hydratedEssayId, setHydratedEssayId] = useState<string | null>(null);
 
   const { data: essay, isLoading } = useQuery({
     queryKey: ['essay', id],
@@ -67,33 +79,69 @@ export function Correction() {
     enabled: !!id,
   });
 
+  useEffect(() => {
+    if (!essay || hydratedEssayId === essay.id) return;
+
+    if (essay.correction) {
+      const nextScores: Record<string, number> = { ...DEFAULT_SCORES };
+      const nextFeedbacks: Record<string, string> = {};
+      for (const competency of essay.correction.competencies) {
+        nextScores[competency.id] = competency.score;
+        nextFeedbacks[competency.id] = competency.feedback || '';
+      }
+      setScores(nextScores);
+      setFeedbacks(nextFeedbacks);
+      setGeneralFeedback(essay.correction.generalFeedback || '');
+      setStrengths(essay.correction.strengths.length > 0 ? essay.correction.strengths : ['']);
+      setImprovements(essay.correction.improvements.length > 0 ? essay.correction.improvements : ['']);
+    }
+
+    setHydratedEssayId(essay.id);
+  }, [essay, hydratedEssayId]);
+
   const submitMutation = useMutation({
     mutationFn: async (status: 'rascunho' | 'finalizada') => {
-      const correction = {
-        professorId: user?.id,
+      if (!id || !user?.id) {
+        throw new EssayDomainError('forbidden', 'Entre como professor para corrigir esta redação.');
+      }
+      return fakeApi.corrections.submit(id, {
+        actorId: user.id,
+        professorId: user.id,
         competencies: competencies.map((c) => ({
           ...c,
-          score: scores[c.id],
-          feedback: feedbacks[c.id] || '',
+          score: scores[c.id] ?? 0,
+          feedback: feedbacks[c.id] ?? '',
         })),
         totalScore: Object.values(scores).reduce((a, b) => a + b, 0),
         generalFeedback,
-        strengths: strengths.filter((s) => s.trim()),
-        improvements: improvements.filter((i) => i.trim()),
-        comments: [],
-        highlights: [],
+        strengths,
+        improvements,
+        comments: essay?.correction?.comments ?? [],
+        highlights: essay?.correction?.highlights ?? [],
         status,
-      };
-      return fakeApi.corrections.submit(id!, correction);
+      });
     },
-    onSuccess: (_, status) => {
+    onSuccess: (saved, status) => {
+      invalidateEssayRelatedQueries(queryClient, id);
       addToast({
         title: status === 'finalizada' ? 'Correção enviada!' : 'Rascunho salvo',
+        message:
+          status === 'finalizada'
+            ? 'O aluno poderá ver o feedback desta redação.'
+            : 'Você pode sair e continuar depois. Nada foi marcado como finalizado.',
         type: 'success',
       });
       if (status === 'finalizada') {
         navigate('/app/redacoes');
       }
+      return saved;
+    },
+    onError: (error) => {
+      addToast({
+        title: 'Não foi possível salvar a correção',
+        message: errorMessage(error, 'Tente novamente. Nada foi marcado como salvo.'),
+        type: 'error',
+      });
     },
   });
 
@@ -340,6 +388,7 @@ export function Correction() {
               variant="ghost"
               leftIcon={<Save className="w-4 h-4" />}
               onClick={() => submitMutation.mutate('rascunho')}
+              disabled={submitMutation.isPending}
               isLoading={submitMutation.isPending}
             >
               Salvar rascunho
@@ -348,6 +397,7 @@ export function Correction() {
               variant="gradient"
               rightIcon={<Send className="w-4 h-4" />}
               onClick={() => submitMutation.mutate('finalizada')}
+              disabled={submitMutation.isPending}
               isLoading={submitMutation.isPending}
             >
               Finalizar correção

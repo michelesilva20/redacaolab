@@ -79,14 +79,28 @@ describe('rotas e sidebar usam a mesma matriz', () => {
 
 describe('regras de recurso da demonstração', () => {
   it('bloqueia redação e feedback de outro aluno', () => {
-    const own = { userId: 'user-aluno-1', correction: { id: 'c1' } };
-    const other = { userId: 'user-aluno-2', correction: { id: 'c2' } };
+    const own = {
+      userId: 'user-aluno-1',
+      status: 'corrigida',
+      correction: { id: 'c1', status: 'finalizada' },
+    };
+    const other = {
+      userId: 'user-aluno-2',
+      status: 'corrigida',
+      correction: { id: 'c2', status: 'finalizada' },
+    };
+    const draftCorrection = {
+      userId: 'user-aluno-1',
+      status: 'em_correcao',
+      correction: { id: 'c3', status: 'rascunho' },
+    };
 
     expect(canViewOwnEssay('user-aluno-1', own)).toBe(true);
     expect(canViewOwnEssay('user-aluno-1', other)).toBe(false);
     expect(canViewFeedback('user-aluno-1', own)).toBe(true);
     expect(canViewFeedback('user-aluno-1', other)).toBe(false);
     expect(canViewFeedback('user-aluno-1', { userId: 'user-aluno-1' })).toBe(false);
+    expect(canViewFeedback('user-aluno-1', draftCorrection)).toBe(false);
   });
 
   it('só permite editar rascunho textual do próprio aluno', () => {

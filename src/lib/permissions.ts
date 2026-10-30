@@ -110,9 +110,13 @@ export function canViewOwnEssay(
 
 export function canViewFeedback(
   userId: string | null | undefined,
-  essay: { userId: string; correction?: unknown } | null | undefined
+  essay: { userId: string; status?: string; correction?: { status?: string } } | null | undefined
 ): boolean {
-  return canViewOwnEssay(userId, essay) && Boolean(essay?.correction);
+  return (
+    canViewOwnEssay(userId, essay) &&
+    essay?.status === 'corrigida' &&
+    essay.correction?.status === 'finalizada'
+  );
 }
 
 export function canCorrectEssay(essay: { status: string } | null | undefined): boolean {

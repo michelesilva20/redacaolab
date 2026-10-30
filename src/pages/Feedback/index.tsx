@@ -21,7 +21,7 @@ import {
 } from 'recharts';
 import { fakeApi } from '../../services/fakeApi';
 import { ForbiddenPage } from '../../components/ForbiddenPage';
-import { canViewOwnEssay } from '../../lib/permissions';
+import { canViewFeedback, canViewOwnEssay } from '../../lib/permissions';
 import { useAuthStore } from '../../stores/authStore';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -59,18 +59,22 @@ export function Feedback() {
     );
   }
 
-  if (!essay || !essay.correction) {
+  const correction = essay?.correction;
+
+  if (!essay || !canViewFeedback(userId, essay) || !correction) {
     return (
       <div className="text-center py-20">
-        <h2 className="text-xl font-semibold text-neutral-800">Correção não encontrada</h2>
+        <h2 className="text-xl font-semibold text-neutral-800">
+          {correction?.status === 'rascunho'
+            ? 'A correção ainda não foi finalizada'
+            : 'Correção não encontrada'}
+        </h2>
         <Link to="/app/redacoes" className="text-primary-600 mt-2 inline-block">
           Voltar
         </Link>
       </div>
     );
   }
-
-  const { correction } = essay;
   const radarData = correction.competencies.map((c) => ({
     competency: c.id,
     score: c.score,
