@@ -1,6 +1,14 @@
-import type { Correction, Essay } from '../types';
+import type { Competency, Correction, Essay } from '../types';
 import { mockEssays } from '../mocks/essays';
 import { getThemeById } from '../mocks/themes';
+import { mockUsers } from '../mocks/users';
+import {
+  COMPETENCY_IDS,
+  computeCorrectionTotal,
+  isFinalizedCorrection,
+  isValidCompetencyScore,
+  normalizeCorrection,
+} from './correctionPersistence';
 import { EssayDomainError } from './essayErrors';
 import {
   countWordsFromHtml,
@@ -24,6 +32,17 @@ export type EssayWriteInput = {
   notes?: string;
   wordCount?: number;
   timer?: EssayTimerSnapshot;
+};
+
+export type CorrectionWriteInput = {
+  actorId: string;
+  essayId: string;
+  competencies: Competency[];
+  generalFeedback?: string;
+  strengths?: string[];
+  improvements?: string[];
+  comments?: Correction['comments'];
+  highlights?: Correction['highlights'];
 };
 
 type SessionPatch = Partial<Pick<Essay, 'status' | 'correction'>>;
@@ -72,6 +91,7 @@ function hydratePersisted(record: PersistedEssayRecord): Essay {
       timerElapsedMs: record.timerElapsedMs,
       timerRunning: record.timerRunning,
       timerStartedAt: record.timerStartedAt,
+      correction: record.correction,
     })
   );
 }
@@ -92,6 +112,11 @@ function timerFields(timer?: EssayTimerSnapshot, fallback?: Essay): Pick<
     timerRunning: fallback?.timerRunning,
     timerStartedAt: fallback?.timerStartedAt,
   };
+}
+
+function correctionField(correction?: Correction): Pick<PersistedEssayRecord, 'correction'> {
+  const normalized = correction ? normalizeCorrection(correction) : undefined;
+  return normalized ? { correction: normalized } : {};
 }
 
 function resolveWordCount(content: string, provided?: number): number {
@@ -207,6 +232,7 @@ export function saveTextDraft(input: EssayWriteInput): Essay {
       updatedAt: now,
       submittedAt: current.submittedAt,
       ...timerFields(input.timer, current),
+      ...correctionField(current.correction),
     });
   }
 
@@ -258,6 +284,7 @@ export function submitTextEssay(input: EssayWriteInput): Essay {
       updatedAt: now,
       submittedAt: now,
       ...timerFields(input.timer, current),
+      ...correctionField(current.correction),
     });
   }
 
@@ -305,6 +332,7 @@ export function persistEssayTimer(actorId: string, essayId: string, timer: Essay
     updatedAt: current.updatedAt ?? current.createdAt,
     submittedAt: current.submittedAt,
     ...timerFields(timer),
+    ...correctionField(current.correction),
   });
 }
 
@@ -332,25 +360,138 @@ export function createSessionImageEssay(data: Partial<Essay> & { actorId: string
   return attachTheme(essay);
 }
 
-export function applyCorrectionInSession(
-  essayId: string,
-  correction: Correction,
-  status: Essay['status']
-): Essay {
-  const current = getMergedEssayById(essayId);
+function createCorrectionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `corr-${crypto.randomUUID()}`;
+  }
+  return `corr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function requireProfessor(actorId: string | null | undefined): string {
+  if (!actorId?.trim()) {
+    throw new EssayDomainError('forbidden', 'Identidade do professor é obrigatória para esta operação.');
+  }
+  const actor = mockUsers.find((user) => user.id === actorId);
+  if (!actor || actor.role !== 'professor') {
+    throw new EssayDomainError('forbidden', 'Somente um professor demonstrativo pode corrigir redações.');
+  }
+  return actorId;
+}
+
+function assertCanCorrectEssay(current: Essay): void {
+  if (current.status === 'rascunho') {
+    throw new EssayDomainError('invalid', 'Não é possível corrigir um rascunho que ainda não foi enviado.');
+  }
+  if (current.status === 'corrigida' || isFinalizedCorrection(current.correction)) {
+    throw new EssayDomainError('invalid', 'Esta correção já foi finalizada e não pode ser alterada.');
+  }
+  if (current.status !== 'enviada' && current.status !== 'em_correcao') {
+    throw new EssayDomainError('invalid', 'Esta redação não está disponível para correção.');
+  }
+}
+
+function buildCompetencies(input: CorrectionWriteInput): Competency[] {
+  if (!Array.isArray(input.competencies) || input.competencies.length !== COMPETENCY_IDS.length) {
+    throw new EssayDomainError('invalid', 'A correção precisa das cinco competências da rubrica suportada.');
+  }
+
+  const byId = new Map(input.competencies.map((item) => [item.id, item]));
+  return COMPETENCY_IDS.map((id) => {
+    const current = byId.get(id);
+    if (!current || !isValidCompetencyScore(current.score)) {
+      throw new EssayDomainError('invalid', `A nota de ${id} deve ser um inteiro entre 0 e 200.`);
+    }
+    return {
+      id,
+      name: current.name?.trim() || id,
+      score: current.score,
+      maxScore: 200,
+      feedback: typeof current.feedback === 'string' ? current.feedback : '',
+    };
+  });
+}
+
+function buildCorrection(
+  current: Essay,
+  input: CorrectionWriteInput,
+  status: Correction['status']
+): Correction {
+  const now = new Date().toISOString();
+  const competencies = buildCompetencies(input);
+  const existing = current.correction;
+  const createdAt = existing?.createdAt || now;
+
+  const draft: Correction = {
+    id: existing?.id || createCorrectionId(),
+    essayId: current.id,
+    professorId: existing?.professorId || input.actorId,
+    competencies,
+    totalScore: computeCorrectionTotal(competencies),
+    generalFeedback: input.generalFeedback ?? existing?.generalFeedback ?? '',
+    strengths: input.strengths ?? existing?.strengths ?? [],
+    improvements: input.improvements ?? existing?.improvements ?? [],
+    comments: input.comments ?? existing?.comments ?? [],
+    highlights: input.highlights ?? existing?.highlights ?? [],
+    status,
+    createdAt,
+    finishedAt: status === 'finalizada' ? now : undefined,
+  };
+
+  const normalized = normalizeCorrection(draft);
+  if (!normalized) {
+    throw new EssayDomainError('invalid', 'Os dados da correção são incompatíveis com o modelo persistido.');
+  }
+  return normalized;
+}
+
+function persistTextualCorrection(current: Essay, correction: Correction, status: Essay['status']): Essay {
+  return persistRecord({
+    id: current.id,
+    userId: current.userId,
+    themeId: current.themeId,
+    type: 'texto',
+    content: current.content ?? '',
+    category: current.category,
+    status,
+    notes: current.notes,
+    wordCount: current.wordCount,
+    createdAt: current.createdAt,
+    updatedAt: new Date().toISOString(),
+    submittedAt: current.submittedAt,
+    ...timerFields(undefined, current),
+    correction,
+  });
+}
+
+function persistImageCorrectionInSession(essayId: string, correction: Correction, status: Essay['status']): Essay {
+  sessionPatches.set(essayId, { correction, status });
+  return getMergedEssayById(essayId)!;
+}
+
+function persistCorrection(input: CorrectionWriteInput, mode: Correction['status']): Essay {
+  const actorId = requireProfessor(input.actorId);
+  const current = getMergedEssayById(input.essayId);
   if (!current) {
     throw new EssayDomainError('not_found', 'Redação não encontrada.');
   }
 
-  const mock = mockEssays.find((essay) => essay.id === essayId);
-  const overlay = readEssayStore().essays.some((essay) => essay.id === essayId);
-  if (mock && !overlay) {
-    mock.correction = correction;
-    mock.status = status;
+  assertCanCorrectEssay(current);
+  const correction = buildCorrection(current, { ...input, actorId }, mode);
+  const nextStatus: Essay['status'] = mode === 'finalizada' ? 'corrigida' : 'em_correcao';
+
+  if (current.type === 'imagem') {
+    return persistImageCorrectionInSession(current.id, correction, nextStatus);
   }
 
-  sessionPatches.set(essayId, { correction, status });
-  return getMergedEssayById(essayId)!;
+  return persistTextualCorrection(current, correction, nextStatus);
+}
+
+export function saveCorrectionDraft(input: CorrectionWriteInput): Essay {
+  return persistCorrection(input, 'rascunho');
+}
+
+export function finalizeCorrection(input: CorrectionWriteInput): Essay {
+  return persistCorrection(input, 'finalizada');
 }
 
 export function resetEssayRepositoryForTests(): void {

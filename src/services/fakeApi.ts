@@ -6,13 +6,14 @@ import { mockThemes, getThemeById, getThemesByCategory, getFeaturedTheme } from 
 import { getGamificationData, mockMissions } from '../mocks/gamification';
 import { mockClasses, getClassesByProfessor, getClassesByStudent, mockNotifications } from '../mocks/classes';
 import {
-  applyCorrectionInSession,
   createSessionImageEssay,
+  finalizeCorrection,
   getMergedEssayById,
   listMergedCorrectedEssays,
   listMergedEssays,
   listMergedEssaysByUser,
   listMergedEssaysForCorrection,
+  saveCorrectionDraft,
   saveTextDraft,
   submitTextEssay,
 } from '../lib/essayRepository';
@@ -184,35 +185,29 @@ export const fakeApi = {
       return getMergedEssayById(essayId)?.correction;
     },
     
-    submit: async (essayId: string, correction: Partial<Correction>): Promise<Correction> => {
+    submit: async (
+      essayId: string,
+      correction: Partial<Correction> & { actorId?: string }
+    ): Promise<Correction> => {
       await randomDelay();
-      if (!getMergedEssayById(essayId)) {
-        throw new Error('Redação não encontrada');
-      }
-      
-      const newCorrection: Correction = {
-        id: `corr-${Date.now()}`,
+      const payload = {
+        actorId: correction.actorId || correction.professorId || '',
         essayId,
-        professorId: correction.professorId || 'user-prof-1',
         competencies: correction.competencies || [],
-        totalScore: correction.totalScore || 0,
-        generalFeedback: correction.generalFeedback || '',
-        strengths: correction.strengths || [],
-        improvements: correction.improvements || [],
-        comments: correction.comments || [],
-        highlights: correction.highlights || [],
-        status: correction.status || 'rascunho',
-        createdAt: new Date().toISOString(),
-        finishedAt: correction.status === 'finalizada' ? new Date().toISOString() : undefined,
+        generalFeedback: correction.generalFeedback,
+        strengths: correction.strengths,
+        improvements: correction.improvements,
+        comments: correction.comments,
+        highlights: correction.highlights,
       };
-
-      applyCorrectionInSession(
-        essayId,
-        newCorrection,
-        correction.status === 'finalizada' ? 'corrigida' : 'em_correcao'
-      );
-      
-      return newCorrection;
+      const essay =
+        correction.status === 'finalizada'
+          ? finalizeCorrection(payload)
+          : saveCorrectionDraft(payload);
+      if (!essay.correction) {
+        throw new Error('A correção não foi persistida.');
+      }
+      return essay.correction;
     },
   },
   

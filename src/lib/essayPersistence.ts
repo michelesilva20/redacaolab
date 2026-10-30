@@ -1,4 +1,5 @@
-import type { Essay } from '../types';
+import type { Correction, Essay } from '../types';
+import { normalizeCorrection } from './correctionPersistence';
 import { EssayStorageError } from './essayErrors';
 import { normalizeTimerSnapshot } from './essayTimer';
 
@@ -26,6 +27,7 @@ export type PersistedEssayRecord = {
   timerElapsedMs?: number;
   timerRunning?: boolean;
   timerStartedAt?: string;
+  correction?: Correction;
 };
 
 export type EssayStorePayload = {
@@ -94,6 +96,7 @@ export function toPersistedEssayRecord(value: unknown): PersistedEssayRecord | n
   if (!isPersistedEssayRecord(value)) return null;
 
   const timer = normalizeTimerSnapshot(value);
+  const correction = normalizeCorrection((value as { correction?: unknown }).correction);
 
   return {
     id: value.id,
@@ -115,6 +118,7 @@ export function toPersistedEssayRecord(value: unknown): PersistedEssayRecord | n
           timerStartedAt: timer.startedAt ?? undefined,
         }
       : {}),
+    ...(correction ? { correction } : {}),
   };
 }
 
