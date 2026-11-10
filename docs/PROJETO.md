@@ -2,8 +2,9 @@
 
 Documento de produto e arquitetura do **RedaçãoLab**, um protótipo frontend de plataforma educacional para treino de redação (ENEM, UNESP e concursos).
 
-**Status:** protótipo frontend completo, sem backend real.  
-**Demo:** [emilabs.cloud/demo/redacaolab](https://emilabs.cloud/demo/redacaolab/)
+**Status:** protótipo frontend integrado à `main` (PR #2, merge `3ff3bd1`). Sem backend real.
+
+**Demo:** [emilabs.cloud/demo/redacaolab](https://emilabs.cloud/demo/redacaolab/) — hospedagem pública **não** revalidada após o merge.
 
 ---
 
@@ -31,7 +32,7 @@ Tudo isso roda no navegador. Login, dados, correções e gamificação são simu
 | Frontend React com fluxos reais de tela | Backend, banco ou autenticação de verdade |
 | Troca de perfil (aluno / professor / admin) para demo | Controle de acesso no servidor |
 | Correção por competências na interface | Correção automática por IA |
-| Fake API com delay e TanStack Query | Persistência de produção; foto de redação ainda some ao recarregar |
+| Fake API com delay e TanStack Query | Persistência de produção; foto de redação some ao recarregar |
 
 `react` e `react-dom` estão declarados como dependências diretas. `zod` permanece no manifesto (versão corrigida ≥ 4.6.6) e ainda não é importado em `src/`.
 
@@ -50,7 +51,7 @@ Tudo isso roda no navegador. Login, dados, correções e gamificação são simu
 | TanStack Query | Fetch da fake API, cache e mutations |
 | React Hook Form + Zod | Presentes no projeto; o login demo não usa mais formulário de credenciais |
 | Vitest + Testing Library | Testes de guard, papéis, persistência e sanitização |
-| GitHub Actions | Workflow mínimo de PR (testes, build, audit de produção); primeiro run remoto em 2026-10-30 no PR #2 |
+| GitHub Actions | Workflow mínimo só em Pull Request (testes, build, audit de produção). Último run do PR #2: SHA `1f82c26`. Sem job no merge da `main`. |
 | DOMPurify | Sanitização do HTML de redação antes de renderizar |
 | TipTap | Editor rico da redação |
 | Recharts | Radar de competências, linhas e barras |
@@ -165,7 +166,7 @@ A navegação da sidebar é filtrada pelo papel atual:
 | Configurações | não | não | sim |
 | Ajuda | sim | sim | sim |
 
-Isso é filtro de interface, não segurança. Qualquer pessoa pode abrir `/app/usuarios` digitando a URL.
+A URL restrita **não** entrega a tela: `RoleRoute` mostra um 403 de demonstração. Isso continua sendo filtro de UX, não segurança de servidor.
 
 ### Como entrar em cada papel
 
@@ -210,9 +211,10 @@ O mock do aluno João Pedro nasce com `onboardingCompleted: false`. Depois da pr
 | `/app/aulas/:id` | Detalhe da aula |
 | `/app/temas` | Catálogo de temas |
 | `/app/temas/:id` | Detalhe do tema |
-| `/app/redacoes` | Lista de redações (ou fila do professor) |
+| `/app/redacoes` | Lista de redações (aluno) ou fila (professor). Admin cai em lista vazia |
 | `/app/redacoes/nova` | Editor / upload de foto |
 | `/app/redacoes/:id` | Detalhe da redação |
+| `/app/redacoes/:id/editar` | Retomada de rascunho textual do próprio aluno |
 | `/app/correcao/:id` | Correção (professor) |
 | `/app/feedback/:id` | Feedback (aluno) |
 | `/app/turmas` | Turmas |
@@ -299,7 +301,7 @@ Login como admin
     → Configurações (nome da plataforma, prazo de correção, critérios C1–C5, notificações)
 ```
 
-Salvar configurações só dispara um toast. Não há persistência de verdade.
+Salvar configurações só dispara um toast. Não há persistência de verdade. A lista `/app/redacoes` do admin usa o mesmo recorte de “minhas redações” e tende a ficar vazia.
 
 ---
 
@@ -458,7 +460,7 @@ Não persistido.
 - **ToastContainer**
 - **OnboardingModal** (só aluno sem onboarding)
 
-No mobile a sidebar é um drawer com overlay. No desktop ela permanece visível.
+No mobile a sidebar é um drawer com overlay. `sidebarOpen` inicia `true`, então o backdrop cobre a tela abaixo de 1024px até o primeiro clique. No desktop ela permanece visível.
 
 ---
 
@@ -510,7 +512,7 @@ npm test         # Vitest (guard, papéis, persistência, login demo)
 npm audit --omit=dev
 ```
 
-Há um workflow em `.github/workflows/ci.yml` para Pull Requests. O primeiro run remoto (PR #2, 2026-10-30) concluiu com sucesso.
+Há um workflow em `.github/workflows/ci.yml` apenas para Pull Requests. O último run remoto do PR #2 (SHA `1f82c26`) concluiu com sucesso. Não há workflow de `push` na `main`.
 
 Na tela de login:
 
@@ -533,6 +535,7 @@ Na tela de login:
 9. Comentários e highlights no texto existem no tipo e nos mocks, mas a tela de correção ainda não os grava.
 10. Vídeos de aula e PDFs são placeholders.
 11. A sanitização de HTML no cliente não substitui validação no backend futuro.
+12. O backend (Java + Spring Boot + PostgreSQL) está **planejado** na Fase 2.1; a pasta `backend/` ainda não existe.
 
 ---
 
